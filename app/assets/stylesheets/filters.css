@@ -13,6 +13,7 @@
 
   inline-size: 100%;
   justify-content: space-between;
+  text-align: start;
 
   span {
     overflow: hidden;

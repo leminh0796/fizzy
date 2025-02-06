@@ -62,7 +62,9 @@
           <li class="filter__label"><strong>In Project</strong></li>
 
           <li>
-            <%= button_tag "All Collections", type: :button, class: "btn filter__button", data: { action: "filter-form#clearCategory", filter_form_name_param: "bucket_ids[]" } %>
+            <%= button_tag type: :button, class: "btn filter__button", data: { action: "filter-form#clearCategory", filter_form_name_param: "bucket_ids[]" } do %>
+              <span>All Collections</span>
+            <% end %>
           </li>
           <% Current.user.buckets.order(:name).each do |bucket| %>
             <li>
