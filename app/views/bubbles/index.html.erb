@@ -29,7 +29,7 @@
   </nav>
 <% end %>
 
-<section class="bubbles flex-inline flex-wrap gap justify-center align-end" style="view-transition-name: bubbles_<%= @filter.id %>">
+<section class="bubbles flex-inline flex-wrap gap justify-center align-end" style="view-transition-name: bubbles_<%= @filter.id %>" data-controller="bubble-size" data-action="turbo:morph@window->bubble-size#resize">
   <% if @bubbles.any? %>
     <%= render partial: "bubbles/bubble", collection: @bubbles.limit(10), cached: true %>
   <% else %>

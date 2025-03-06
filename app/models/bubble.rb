@@ -1,6 +1,6 @@
 class Bubble < ApplicationRecord
   include Assignable, Boostable, Colored, Commentable, Eventable,
-    Messages, Notifiable, Poppable, Searchable, Staged, Statuses, Taggable, Watchable
+    Messages, Notifiable, Poppable, Scorable, Searchable, Staged, Statuses, Taggable, Watchable
 
   belongs_to :bucket, touch: true
   belongs_to :creator, class_name: "User", default: -> { Current.user }
@@ -14,7 +14,6 @@ class Bubble < ApplicationRecord
 
   scope :reverse_chronologically, -> { order created_at: :desc, id: :desc }
   scope :chronologically, -> { order created_at: :asc, id: :asc }
-  scope :ordered_by_activity, -> { order activity_score: :desc }
   scope :in_bucket, ->(bucket) { where bucket: bucket }
 
   scope :indexed_by, ->(index) do
@@ -26,10 +25,6 @@ class Bubble < ApplicationRecord
     when "oldest"         then chronologically
     when "popped"         then popped
     end
-  end
-
-  def rescore
-    update! activity_score: boosts_count + comments_count
   end
 
   private

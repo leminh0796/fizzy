@@ -12,8 +12,17 @@ class Event < ApplicationRecord
   scope :chronologically, -> { order created_at: :asc, id: :desc }
   scope :non_boosts, -> { where.not action: :boosted }
   scope :boosts, -> { where action: :boosted }
+  scope :comments, -> { where action: :commented }
 
   after_create -> { bubble.update_auto_pop_at(created_at) }
+
+  def boosted?
+    action == "boosted"
+  end
+
+  def commented?
+    action == "commented"
+  end
 
   def generate_notifications
     Notifier.for(self)&.generate

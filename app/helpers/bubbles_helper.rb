@@ -10,17 +10,4 @@ module BubblesHelper
 
     "--bubble-rotate: #{value}deg;"
   end
-
-  def bubble_size(bubble)
-    rank =
-      case bubble.activity_score
-      when 0..5   then "one"
-      when 6..10  then "two"
-      when 11..25 then "three"
-      when 26..50 then "four"
-      else             "five"
-      end
-
-    "--bubble-size: var(--bubble-size-#{rank});"
-  end
 end

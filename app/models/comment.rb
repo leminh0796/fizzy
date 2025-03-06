@@ -10,6 +10,14 @@ class Comment < ApplicationRecord
 
   before_destroy :cleanup_events
 
+  def first_by_author_on_bubble?
+    bubble_comments.many? && bubble_comments_prior.where(creator_id: creator_id).none?
+  end
+
+  def follows_comment_by_another_author?
+    bubble_comments.many? && bubble_comments_prior.last&.creator != creator
+  end
+
   private
 
   def cleanup_events
@@ -20,5 +28,13 @@ class Comment < ApplicationRecord
 
     # Delete events that reference directly in particulars
     Event.where(particulars: { comment_id: id }).destroy_all
+  end
+
+  def bubble_comments_prior
+    bubble_comments.where(created_at: ...created_at)
+  end
+
+  def bubble_comments
+    Comment.joins(:message).where(messages: { bubble: bubble })
   end
 end

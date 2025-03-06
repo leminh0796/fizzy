@@ -14,8 +14,10 @@ class BubbleTest < ActiveSupport::TestCase
   end
 
   test "boosting" do
-    assert_difference %w[ bubbles(:logo).boosts_count bubbles(:logo).activity_score Event.count ], +1 do
-      bubbles(:logo).boost!(bubbles(:logo).boosts_count+ 1)
+    assert_changes -> { bubbles(:logo).activity_score } do
+      assert_difference -> { bubbles(:logo).boosts_count }, +1 do
+        bubbles(:logo).boost!(bubbles(:logo).boosts_count+ 1)
+      end
     end
   end
 
@@ -70,11 +72,6 @@ class BubbleTest < ActiveSupport::TestCase
     bubble = buckets(:writebook).bubbles.create! title: "Insufficient haggis", creator: users(:kevin)
 
     assert_includes Bubble.search("haggis"), bubble
-  end
-
-  test "ordering by activity" do
-    bubbles(:layout).tap { |b| b.update!(boosts_count: 1_000) }.rescore
-    assert_equal bubbles(:layout, :logo, :shipping, :text), Bubble.ordered_by_activity
   end
 
   test "ordering by comments" do

@@ -26,7 +26,7 @@ class FilterTest < ActiveSupport::TestCase
     assert_equal [ @new_bubble ], filter.bubbles
 
     filter = users(:david).filters.new terms: [ "haggis" ]
-    assert_equal bubbles(:logo, :layout), filter.bubbles
+    assert_equal bubbles(:logo, :layout).sort, filter.bubbles.sort
 
     filter = users(:david).filters.new terms: [ "haggis", "love" ]
     assert_equal [ bubbles(:logo) ], filter.bubbles

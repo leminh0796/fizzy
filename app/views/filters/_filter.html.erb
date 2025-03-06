@@ -3,7 +3,10 @@
     <%= link_to bubbles_path(**filter.as_params), class: "border border-radius margin-block-end-half bubbles__container flex justify-center align-center position-relative" do %>
       <div class="bubbles bucket__bubbles flex flex-wrap gap justify-center align-end" style="view-transition-name: bubbles_<%= filter.id %>">
         <% filter.bubbles.ordered_by_activity.limit(10).each do |bubble| %>
-          <div class="bubble" style="--bubble-color: <%= bubble.color %>; <%= bubble_rotation(bubble) %> <%= bubble_size(bubble) %>">
+          <div class="<%= class_names("bubble", drafted: bubble.drafted?) %>" style="--bubble-color: <%= bubble.color %>; <%= bubble_rotation(bubble) %>"
+            data-bubble-size-target="bubble"
+            data-activity-score="<%= bubble.activity_score %>"
+            data-activity-score-at="<%= bubble.activity_score_at.to_i %>">
             <span class="bubble__shape"></span>
           </div>
         <% end %>
