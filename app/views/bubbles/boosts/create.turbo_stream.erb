@@ -1,5 +1,5 @@
 <%= turbo_stream.update dom_id(@bubble, :boosts) do %>
-  <%= render "boosts/boosts", bubble: @bubble %>
+  <%= render "bubbles/boosts/boosts", bubble: @bubble %>
 <% end %>
 
 <%= turbo_stream.replace dom_id(@bubble, :messages) do %>

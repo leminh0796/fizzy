@@ -1,4 +1,4 @@
-class BoostsController < ApplicationController
+class Bubbles::BoostsController < ApplicationController
   include BubbleScoped
 
   def create
@@ -8,9 +8,5 @@ class BoostsController < ApplicationController
       params[:boost_count].to_i
     end
     @bubble.boost!(count)
-
-    respond_to do |format|
-      format.turbo_stream
-    end
   end
 end

@@ -1,6 +1,6 @@
 require "test_helper"
 
-class BoostsControllerTest < ActionDispatch::IntegrationTest
+class Bubbles::BoostsControllerTest < ActionDispatch::IntegrationTest
   setup do
     sign_in_as :kevin
   end
@@ -9,7 +9,7 @@ class BoostsControllerTest < ActionDispatch::IntegrationTest
     boost_count = bubbles(:logo).boosts_count
 
     assert_difference "bubbles(:logo).reload.boosts_count", +1 do
-      post bucket_bubble_boosts_url(buckets(:writebook), bubbles(:logo), params: { boost_count: boost_count }, format: :turbo_stream)
+      post bubble_boosts_path(bubbles(:logo), params: { boost_count: boost_count }, format: :turbo_stream)
     end
 
     assert_turbo_stream action: :update, target: dom_id(bubbles(:logo), :boosts)
@@ -19,7 +19,7 @@ class BoostsControllerTest < ActionDispatch::IntegrationTest
     boost_count = 10
 
     assert_changes "bubbles(:logo).reload.boosts_count", to: boost_count do
-      post bucket_bubble_boosts_url(buckets(:writebook), bubbles(:logo), params: { boost_count: boost_count }, format: :turbo_stream)
+      post bubble_boosts_path(bubbles(:logo), params: { boost_count: boost_count }, format: :turbo_stream)
     end
 
     assert_turbo_stream action: :update, target: dom_id(bubbles(:logo), :boosts)

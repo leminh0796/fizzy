@@ -14,7 +14,7 @@ class BubbleMessagesTest < ActionDispatch::IntegrationTest
     assert_equal "created", bubble.messages.last.messageable.events.sole.action
 
     # Boost it
-    post bucket_bubble_boosts_url(buckets(:writebook), bubble, format: :turbo_stream)
+    post bubble_boosts_path(bubble, format: :turbo_stream)
     assert_equal 1, bubble.messages.count
     assert_predicate bubble.messages.last, :event_summary?
     assert_equal 2, bubble.messages.last.event_summary.events.count

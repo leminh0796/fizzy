@@ -1,10 +1,11 @@
-<%= form_with url: bucket_bubble_boosts_path(bubble.bucket, bubble), class: "pad-inline flex align-center gap" do %>
+<div class="pad-inline flex align-center gap">
   <span class="overflow-ellipsis">
     <strong><%= text_field_tag :boost_count, bubble.boosts_count, min: 1, class: "boost__input input", autocomplete: "off" %></strong>
     <span><%= bubble.boosts_count == 1 ? "boost" : "boosts" %></span>
   </span>
-  <%= tag.button class: "btn", type: :submit, style: "font-size: 0.5em" do %>
+
+  <%= button_to bubble_boosts_path(bubble), class: "btn", type: :submit, style: "font-size: 0.5em" do %>
     <%= icon_tag "add" %>
     <span class="for-screen-reader">Boost</span>
   <% end %>
-<% end %>
+</div>
