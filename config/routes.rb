@@ -65,6 +65,10 @@ Rails.application.routes.draw do
   resource :first_run
   resources :qr_codes
 
+  namespace :my do
+    resources :pins
+  end
+
   resource :session do
     scope module: "sessions" do
       resources :transfers, only: %i[ show update ]
@@ -89,8 +93,6 @@ Rails.application.routes.draw do
   get "up", to: "rails/health#show", as: :rails_health_check
   get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
 
-  namespace :my do
-    resources :pins
   resource :terminal, only: [ :show, :edit ]
 
   resolve "Bubble" do |bubble, options|
