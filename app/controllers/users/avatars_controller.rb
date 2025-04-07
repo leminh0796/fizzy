@@ -4,7 +4,7 @@ class Users::AvatarsController < ApplicationController
   before_action :set_user
 
   def show
-    if stale? @user, cache_control: { max_age: 30.minutes, stale_while_revalidate: 1.week }
+    if stale? @user, cache_control: { max_age: cache_max_age, stale_while_revalidate: 1.week }
       render_avatar_or_initials
     end
   end
@@ -15,6 +15,14 @@ class Users::AvatarsController < ApplicationController
   end
 
   private
+    def cache_max_age
+      if Current.user == @user
+        0
+      else
+        30.minutes
+      end
+    end
+
     def set_user
       @user = Current.account.users.find(params[:user_id])
     end
