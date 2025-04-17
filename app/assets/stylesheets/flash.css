@@ -12,7 +12,7 @@
     animation: appear-then-fade 3s 300ms both;
     background-color: var(--flash-background, var(--color-ink));
     border-radius: 4em;
-    color: var(--flash-color, var(--color-ink-reversed));
+    color: var(--flash-color, var(--color-ink-inverted));
     display: inline-flex;
     font-size: var(--font-size-medium);
     margin: 0 auto;

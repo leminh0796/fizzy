@@ -83,7 +83,7 @@
     }
 
     .err {
-      color: var(--color-ink-reversed);
+      color: var(--color-ink-inverted);
       background-color: var(--markup-deleted);
     }
 

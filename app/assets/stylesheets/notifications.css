@@ -62,7 +62,7 @@
 
   .notification__unread_indicator {
     --btn-background: var(--color-marker);
-    --btn-border-color: var(--color-bg);
+    --btn-border-color: var(--color-canvas);
     --btn-icon-size: 0.7em;
     --btn-padding: 0;
     --btn-size: 1.2em;

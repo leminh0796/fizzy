@@ -135,7 +135,7 @@
     &:has(:focus-visible) {
       .switch__btn {
         box-shadow:
-          0 0 0 var(--outline-size) var(--color-bg),
+          0 0 0 var(--outline-size) var(--color-canvas),
           0 0 0 calc(var(--outline-size) * 2) var(--color-ink);
       }
     }
@@ -156,7 +156,7 @@
     transition: 150ms ease;
 
     &::before {
-      background-color: var(--color-ink-reversed);
+      background-color: var(--color-ink-inverted);
       block-size: 1.35em;
       border-radius: 50%;
       content: "";

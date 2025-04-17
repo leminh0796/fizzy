@@ -30,7 +30,7 @@
       --block-space-half: 0.5em;
       --text-xx-large: 2em;
 
-      border: 1px solid var(--color-bg);
+      border: 1px solid var(--color-canvas);
     }
 
     .card__collection {

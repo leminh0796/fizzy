@@ -1,6 +1,6 @@
 @layer components {
   .panel {
-    background-color: var(--color-bg);
+    background-color: var(--color-canvas);
     border: var(--panel-border-size, 1px) solid var(--panel-border-color, var(--color-subtle));
     border-radius: var(--panel-border-radius, 1em);
     color: var(--color-ink);

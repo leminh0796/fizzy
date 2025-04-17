@@ -3,7 +3,7 @@
 
 <%= link_to link,
       class: "event event--#{ event.action } panel center center-block flex-inline align-start justify-start gap position-relative",
-      style: "--card-color: #{ card.color }; background-color: color-mix(in srgb, var(--card-color) 10%, var(--color-bg));
+      style: "--card-color: #{ card.color }; background-color: color-mix(in srgb, var(--card-color) 10%, var(--color-canvas));
   color: color-mix(in srgb, var(--card-color) 40%, var(--color-ink));",
       data: { related_element_target: "related",
               related_element_group_value: card.id,

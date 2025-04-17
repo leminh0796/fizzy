@@ -93,7 +93,7 @@
 
     &[status="failed"] {
       background-color: var(--color-negative);
-      color: var(--color-ink-reversed);
+      color: var(--color-ink-inverted);
       font-weight: bold;
       padding: 0.5em;
     }
@@ -112,13 +112,13 @@
     cursor: pointer;
 
     house-md-upload[status="failed"] & {
-      color: var(--color-ink-reversed);
+      color: var(--color-ink-inverted);
       display: inline-block;
     }
 
     &::before {
       content: '×';
-      color: var(--color-ink-reversed);
+      color: var(--color-ink-inverted);
       font-size: 24px;
       font-weight: bold;
       position: absolute;

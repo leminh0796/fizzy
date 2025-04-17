@@ -12,17 +12,17 @@
     }
 
     body {
-      --lch-black: 0% 0 0;
+      --lch-ink: 0% 0 0;
       --lch-gray: 75% 0.005 96;
-      --lch-white: 100% 0 0;
+      --lch-ink-inverted: 100% 0 0;
 
       --color-border: oklch(var(--lch-gray));
-      --color-bg: oklch(var(--lch-white));
-      --color-text: oklch(var(--lch-black));
+      --color-canvas: oklch(var(--lch-ink-inverted));
+      --color-text: oklch(var(--lch-ink));
 
       --btn-size: 2.65em;
 
-      background-color: var(--color-bg);
+      background-color: var(--color-canvas);
       block-size: 100dvh;
       color: var(--color-text);
       display: grid;
@@ -32,9 +32,9 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
       @media (prefers-color-scheme: dark) {
-        --lch-black: 100% 0 0;
-        --lch-gray: 44.95% 0 0;
-        --lch-white: 0% 0 0;
+        --lch-ink: 100% 0 0;
+        --lch-gray: 45% 0 0;
+        --lch-ink-inverted: 0% 0 0;
       }
     }
 
@@ -65,12 +65,12 @@
       inline-size: 30dvh;
 
       svg {
-        fill: var(--color-bg);
+        fill: var(--color-canvas);
         grid-area: 1/1;
         max-inline-size: 66%;
 
         @media (prefers-color-scheme: dark) {
-          fill: var(--color-bg);
+          fill: var(--color-canvas);
         }
       }
     }
@@ -91,7 +91,7 @@
     .btn {
       align-items: center;
       aspect-ratio: 1;
-      background-color: var(--color-bg);
+      background-color: var(--color-canvas);
       block-size: var(--btn-size);
       border-radius: 50%;
       border: 1px solid var(--color-border);

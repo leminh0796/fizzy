@@ -14,7 +14,7 @@
   .txt-align-end { text-align: end; }
 
   .txt-ink { color: var(--color-ink); }
-  .txt-reversed { color: var(--color-ink-reversed); }
+  .txt-reversed { color: var(--color-ink-inverted); }
   .txt-negative { color: var(--color-negative); }
   .txt-subtle { color: var(--color-subtle-dark); }
   .txt-alert { color: var(--color-marker); }
@@ -146,9 +146,9 @@
   .position-sticky { position: sticky; inset: var(--inset, 0 auto auto auto); z-index: var(--z, 1); }
 
   /* Fills */
-  .fill { background-color: var(--color-bg); }
+  .fill { background-color: var(--color-canvas); }
   .fill-black { background-color: var(--color-ink); }
-  .fill-white { background-color: var(--color-ink-reversed); }
+  .fill-white { background-color: var(--color-ink-inverted); }
   .fill-shade { background-color: var(--color-subtle-light); }
   .fill-selected { background-color: var(--color-selected); }
   .fill-highlight { background-color: var(--color-highlight); }

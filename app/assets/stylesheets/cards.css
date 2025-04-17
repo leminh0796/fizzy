@@ -7,7 +7,7 @@
     --border-size: 0;
 
     aspect-ratio: var(--card-aspect-ratio, auto);
-    background-color: color-mix(in srgb, var(--card-color) 4%, var(--color-bg));
+    background-color: color-mix(in srgb, var(--card-color) 4%, var(--color-canvas));
     border-radius: 0.5em;
     box-shadow: var(--shadow);
     color: color-mix(in srgb, var(--card-color) 40%, var(--color-ink));
@@ -29,9 +29,9 @@
   }
 
   .card--golden.card--doing {
-    --border-color: var(--color-bg) !important;
+    --border-color: var(--color-canvas) !important;
 
-    background-color: var(--color-bg);
+    background-color: var(--color-canvas);
     background-image: linear-gradient(90deg, oklch(var(--lch-golden) / 0.5) 0%, oklch(var(--lch-golden) / 0.1) 50%, oklch(var(--lch-golden) / 0.75) 100%);
     box-shadow:
       0 0 0.5em 0.2em var(--color-golden),
@@ -203,7 +203,7 @@
   }
 
   .card__closed-title {
-    color: var(--color-ink-reversed);
+    color: var(--color-ink-inverted);
     font-size: var(--text-rel-large);
     font-weight: 900;
     text-shadow:

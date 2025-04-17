@@ -34,8 +34,9 @@
   --btn-size: 2.65em;
 
   /* Color values */
-  --lch-black: 27.13% 0.1035 284.77;
-  --lch-white: 100% 0 0;
+  --lch-ink: 27.13% 0.1035 284.77;
+  --lch-ink-inverted: 100% 0 0;
+
   --lch-gray-light: 96% 0.005 96;
   --lch-gray: 92% 0.005 96;
   --lch-gray-dark: 75% 0.005 96;
@@ -53,12 +54,14 @@
   --lch-light-blue: 84.94% 0.048 216.62;
 
   /* Color abstractions */
+  --color-ink: oklch(var(--lch-ink));
+  --color-ink-inverted: oklch(var(--lch-ink-inverted));
+  --color-canvas: oklch(var(--lch-ink-inverted));
+
+
   --color-negative: oklch(var(--lch-red));
   --color-positive: oklch(var(--lch-green));
   --color-positive-light: oklch(var(--lch-green-light));
-  --color-bg: oklch(var(--lch-white));
-  --color-ink: oklch(var(--lch-black));
-  --color-ink-reversed: oklch(var(--lch-white));
   --color-link: oklch(var(--lch-blue));
   --color-subtle-light: oklch(var(--lch-gray-light));
   --color-subtle: oklch(var(--lch-gray));
@@ -73,8 +76,8 @@
   --color-golden: oklch(var(--lch-golden));
 
   @media (prefers-color-scheme: dark) {
-    --lch-black: 100% 0 0;
-    --lch-white: 0% 0 0;
+    --lch-ink: 100% 0 0;
+    --lch-ink-inverted: 0% 0 0;
     --lch-gray-light: 25.2% 0 0;
     --lch-gray: 30.12% 0 0;
     --lch-gray-dark: 44.95% 0 0;
