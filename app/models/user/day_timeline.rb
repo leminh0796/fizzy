@@ -13,10 +13,6 @@ class User::DayTimeline
     filtered_events.where(created_at: window).order(created_at: :desc)
   end
 
-  def window
-    day.all_day
-  end
-
   def next_day
     latest_event_before&.created_at
   end
@@ -40,5 +36,9 @@ class User::DayTimeline
 
     def latest_event_before
       filtered_events.where(created_at: ...day.beginning_of_day).chronologically.last
+    end
+
+    def window
+      day.all_day
     end
 end
