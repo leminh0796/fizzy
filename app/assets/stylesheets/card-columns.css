@@ -10,10 +10,13 @@
   }
 
   .card-columns {
+    --bubble-size: 4rem;
+    --bubble-gap: 0.5rem;
+
     display: grid;
     grid-template-columns: repeat(2, 50%);
     margin: auto;
-    max-inline-size: 1080px;
+    max-inline-size: calc(100% - (var(--bubble-size) + var(--bubble-gap)) * 2);
     position: relative;
 
     &:before {

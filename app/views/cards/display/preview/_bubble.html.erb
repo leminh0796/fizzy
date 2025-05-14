@@ -1,4 +1,4 @@
-<div class="card__bubble">
+<div class="bubble <%= local_assigns[:class] || "" %>">
   <svg viewBox="0 0 200 100">
     <path id="top-half" fill="transparent" d="M 20,100 A 80,80 0 0,1 180,100" />
     <text text-anchor="middle" fill="currentColor">
@@ -8,7 +8,7 @@
     </text>
   </svg>
 
-  <span class="circle-bubble__number">
+  <span class="bubble__number">
     <%= days < 1 ? "!" : days %>
   </span>
 

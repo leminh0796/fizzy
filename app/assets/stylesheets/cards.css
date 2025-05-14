@@ -25,7 +25,6 @@
   }
 
   .card--golden.card--doing {
-    /* --lch-golden: var(--lch-yellow-medium); */
     --lch-golden: 89.1% 0.178 95.7;
 
     background-color: var(--color-canvas);
@@ -290,60 +289,6 @@
     border-block-end: 1px dashed currentcolor;
   }
 
-  .card__bubble {
-    --bubble-color: radial-gradient(oklch(var(--lch-blue-medium) / 10%) 50%, oklch(var(--lch-blue-medium) / 50%) 100%);
-    --bubble-shape: 54% 46% 61% 39% / 57% 49% 51% 43%;
-    --bubble-rotate: 0deg;
-    --size: 5cqi;
-
-    block-size: var(--size);
-    container-type: inline-size;
-    font-size: 1.75rem;
-    font-weight: bold;
-    inline-size: var(--size);
-    inset: 50% auto auto -0.5ch;
-    padding: 0.5cqi;
-    position: absolute;
-    translate: -100% -50%;
-
-    &:before {
-      background: var(--bubble-color);
-      border-radius: var(--bubble-shape);
-      content: "";
-      inset: 0;
-      position: absolute;
-      transform: rotate(var(--bubble-rotate));
-    }
-
-    @media (any-hover: hover) {
-      &:hover:before {
-        animation: wobble 1200ms;
-      }
-    }
-
-    span {
-      display: grid;
-      font-size: 40cqi;
-      font-weight: 900;
-      inset: 0;
-      place-content: center;
-      position: absolute;
-      text-align: center;
-    }
-
-    svg {
-      display: block;
-      letter-spacing: 0.125ch;
-      text-transform: uppercase;
-    }
-
-    .card:nth-child(2n+1) & { --bubble-rotate: -90deg; }
-    .card:nth-child(3n+1) & { --bubble-rotate: 45deg; }
-  }
-
-  .card__bubble--today {
-    span {
-      font-size: 30cqi;
-    }
-  }
+  .card:nth-child(2n+1) .bubble { --bubble-rotate: -90deg; }
+  .card:nth-child(3n+1) .bubble { --bubble-rotate: 45deg; }
 }

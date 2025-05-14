@@ -1,0 +1,53 @@
+@layer components {
+  .bubble {
+    --bubble-color: radial-gradient(oklch(var(--lch-blue-medium) / 10%) 50%, oklch(var(--lch-blue-medium) / 50%) 100%);
+    --bubble-shape: 54% 46% 61% 39% / 57% 49% 51% 43%;
+    --bubble-rotate: 0deg;
+    --bubble-size-default: 4rem;
+
+    block-size: var(--bubble-size, var(--bubble-size-default));
+    container-type: inline-size;
+    font-size: 1.75rem;
+    font-weight: bold;
+    inline-size: var(--bubble-size, var(--bubble-size-default));
+    padding: 0.5cqi;
+    position: absolute;
+    inset-block-start: 50%;
+
+    &:before {
+      background: var(--bubble-color);
+      border-radius: var(--bubble-shape);
+      content: "";
+      inset: 0;
+      position: absolute;
+      transform: rotate(var(--bubble-rotate));
+    }
+
+    @media (any-hover: hover) {
+      &:hover:before {
+        animation: wobble 1200ms;
+      }
+    }
+
+    svg {
+      display: block;
+      letter-spacing: 0.125ch;
+      text-transform: uppercase;
+    }
+  }
+
+  .bubble__number {
+    display: grid;
+    font-size: 40cqi;
+    font-weight: 900;
+    inset: 0;
+    place-content: center;
+    position: absolute;
+    text-align: center;
+  }
+}
+
+.bubble--closing {
+  inset-inline-start: calc(-1 * var(--bubble-gap));
+  translate: -100% -50%;
+}

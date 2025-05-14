@@ -30,7 +30,7 @@
     <%= render "cards/display/common/background", card: card %>
 
     <% if card.closing_soon? %>
-      <%= render "cards/display/preview/bubble", days: card.days_until_close %>
+      <%= render "cards/display/preview/bubble", days: card.days_until_close, class: "bubble--closing" %>
     <% end %>
   <% end %>
 <% end %>
