@@ -97,5 +97,14 @@
       border-block-end-width: 3px;
       font-weight: 700;
     }
+
+    :where(img, video, embed, object) {
+      max-block-size: 32rem;
+
+      /* Links should hug media contained within */
+      a:has(&) {
+        display: inline-block;
+      }
+    }
   }
 }

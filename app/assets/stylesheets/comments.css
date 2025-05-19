@@ -61,18 +61,6 @@
         margin-block-end: 0;
       }
     }
-
-    img,
-    video,
-    embed,
-    object {
-      max-block-size: 32rem;
-
-      /* Links should hug media contained within */
-      a:has(&) {
-        display: inline-block;
-      }
-    }
   }
 
   .comment__content {
