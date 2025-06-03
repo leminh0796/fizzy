@@ -25,8 +25,7 @@ export default class extends Controller {
   }
 
   navigate(event) {
-    const key = event.key === " " ? "Space" : event.key
-    this.#keyHandlers[key]?.call(this, event)
+    this.#keyHandlers[event.key]?.call(this, event)
   }
 
   select({ target }) {
@@ -126,10 +125,11 @@ export default class extends Controller {
       this.#handleArrowKey(event, this.#selectPrevious.bind(this))
     },
     Enter(event) {
-      this.#clickCurrentItem(event)
-    },
-    Space(event) {
-      this.#toggleCurrentItem(event)
+      if (event.ctrlKey || event.metaKey) {
+        this.#toggleCurrentItem(event)
+      } else {
+        this.#clickCurrentItem(event)
+      }
     }
   }
 }
