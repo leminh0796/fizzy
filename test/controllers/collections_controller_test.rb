@@ -45,6 +45,22 @@ class CollectionsControllerTest < ActionDispatch::IntegrationTest
     assert_not collections(:writebook).all_access?
   end
 
+  test "update collection with granular permissions, submitting no user ids" do
+    assert_not collections(:private).all_access?
+
+    collections(:private).users = [ users(:kevin) ]
+    collections(:private).save!
+
+    patch collection_path(collections(:private)), params: {
+      collection: { name: "Renamed" }
+    }
+
+    assert_redirected_to edit_collection_path(collections(:private))
+    assert_equal "Renamed", collections(:private).reload.name
+    assert_equal [ users(:kevin) ], collections(:private).users
+    assert_not collections(:private).all_access?
+  end
+
   test "update all access" do
     collection = Current.set(session: sessions(:kevin)) do
       Collection.create! name: "New collection", all_access: false

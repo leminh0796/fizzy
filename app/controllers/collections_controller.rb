@@ -17,7 +17,7 @@ class CollectionsController < ApplicationController
 
   def update
     @collection.update! collection_params
-    @collection.accesses.revise granted: grantees, revoked: revokees
+    @collection.accesses.revise granted: grantees, revoked: revokees if grantees_changed?
 
     redirect_to edit_collection_path(@collection), notice: "Collection updated"
   end
@@ -46,5 +46,9 @@ class CollectionsController < ApplicationController
 
     def grantee_ids
       params.fetch :user_ids, []
+    end
+
+    def grantees_changed?
+      params.key?(:user_ids)
     end
 end
