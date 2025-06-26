@@ -27,6 +27,10 @@ export default class extends Controller {
     } else {
       this.#hideHelpMenu()
     }
+
+    if (!this.inputTarget.value.trim()) {
+      event.preventDefault()
+    }
   }
 
   hideMenus() {
