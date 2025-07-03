@@ -2,6 +2,9 @@ module Authentication
   extend ActiveSupport::Concern
 
   included do
+    # Checking for tenant must happen first so we redirect before trying to access the db.
+    before_action :require_tenant
+
     before_action :set_current_account
     before_action :require_authentication
     helper_method :authenticated?
@@ -19,6 +22,7 @@ module Authentication
     end
 
     def require_untenanted_access(**options)
+      skip_before_action :require_tenant, **options
       skip_before_action :set_current_account, **options
       skip_before_action :require_authentication, **options
       before_action :redirect_tenanted_request, **options
@@ -28,6 +32,10 @@ module Authentication
   private
     def authenticated?
       Current.session.present?
+    end
+
+    def require_tenant
+      ApplicationRecord.current_tenant.present? || request_authentication
     end
 
     def require_authentication
@@ -48,7 +56,7 @@ module Authentication
     def request_authentication
       session[:return_to_after_authenticating] = request.url
 
-      redirect_to Launchpad.login_url(account: Current.account), allow_other_host: true
+      redirect_to Launchpad.login_url(product: true, account: Current.account), allow_other_host: true
     end
 
     def after_authentication_url
