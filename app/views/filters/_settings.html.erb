@@ -18,6 +18,7 @@
     <%= render "filters/tags", filter: filter %>
     <%= render "filters/assignees", filter: filter %>
     <%= render "filters/creators", filter: filter %>
+    <%= render "filters/closers", filter: filter %>
     <%= render "filters/time_window", filter: filter, name: :creation, label: "Created" %>
     <%= render "filters/time_window", filter: filter, name: :closure, label: "Closed" %>
     <%# FIXME LATER: this needs to be able to allow selection of unique stages across all active workflows %>
@@ -43,7 +44,7 @@
         <% end %>
       <% end %>
 
-      <%= link_to cards_path(filter.as_params.except(:assignee_ids, :assignment_status, :card_ids, :creator_ids, :stage_ids, :tag_ids, :terms, :indexed_by, :creation, :closure)), class: "btn btn--remove txt-x-small" do %>
+      <%= link_to cards_path(filter.as_params.except(:assignee_ids, :assignment_status, :card_ids, :creator_ids, :closer_ids, :stage_ids, :tag_ids, :terms, :indexed_by, :creation, :closure)), class: "btn btn--remove txt-x-small" do %>
         <%= icon_tag "close" %>
         <span class="for-screen-reader">Clear all</span>
       <% end %>

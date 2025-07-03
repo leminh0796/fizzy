@@ -1,0 +1,62 @@
+<% if filter.closers.any? || @expand_all %>
+  <div class="quick-filter position-relative" data-controller="dialog"
+        data-action="keydown.esc->dialog#close click@document->dialog#closeOnClickOutside">
+    <button class="btn input input--select flex-inline txt-x-small" data-action="click->dialog#open:stop">
+      <span class="overflow-ellipsis">
+        <% if filter.closers.any? %>
+          <%= "Closed by #{filter.closers.map(&:familiar_name).to_sentence(two_words_connector: " or ", last_word_connector: ", or ")}" %>
+        <% else %>
+          Closed by…
+        <% end %>
+      </span>
+    </button>
+
+    <%= tag.dialog class: "margin-block-start-half popup panel flex-column align-start gap-half fill-white shadow txt-small", data: {
+				action: "turbo:before-cache@document->dialog#close keydown->navigable-list#navigate filter:changed->navigable-list#reset toggle->filter#filter",
+        aria: { label: "Closed by…", aria_description: "Closed by…" },
+				controller: "filter navigable-list",
+				dialog_target: "dialog",
+				navigable_list_focus_on_selection_value: false,
+				navigable_list_actionable_items_value: true } do %>
+      <strong class="popup__title txt-nowrap">Closed by…</strong>
+
+      <% if User.active.many? %>
+        <%= text_field_tag :search, nil, placeholder: "Filter…", class: "input input--transparent txt-small", autofocus: true,
+              type: "search", autocorrect: "off", autocomplete: "off", data: { "1p-ignore": "true", filter_target: "input", action: "input->filter#filter" } %>
+      <% end %>
+
+      <ul class="popup__list" data-filter-target="list">
+        <% User.active.order(:name).each do |user| %>
+          <li class="popup__group flex align-center" data-filter-target="item" data-navigable-list-target="item">
+            <%= form_with url: cards_path, method: :get, class: "full-width", data: { controller: "form" } do |form| %>
+              <% filter.as_params.except(:closer_ids).each do |key, value| %>
+                <%= filter_hidden_field_tag key, value %>
+              <% end %>
+
+              <% filter.closers.each do |existing_closer| %>
+                <% unless existing_closer == user %>
+                  <%= hidden_field_tag "closer_ids[]", existing_closer.id %>
+                <% end %>
+              <% end %>
+
+              <% unless filter.closers.include?(user) %>
+                <%= hidden_field_tag "closer_ids[]", user.id %>
+              <% end %>
+
+              <% if @expand_all %>
+                <%= hidden_field_tag :expand_all, @expand_all %>
+              <% end %>
+
+              <%= form.button type: "submit", class: "btn popup__item min-width full-width unpad-inline" do %>
+                <span class="overflow-ellipsis flex-item-grow"><%= user.name %></span>
+                <% if filter.closers.include?(user) %>
+                  <%= icon_tag "check", class: "checked flex-item-justify-end" %>
+                <% end %>
+              <% end %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+<% end %>
