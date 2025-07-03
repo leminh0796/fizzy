@@ -37,6 +37,8 @@
   }
 
   .comment__author {
+    margin-inline-end: calc(var(--comment-padding-inline) * -0.66);
+
     .comment--system & {
       h3 {
         margin-inline: auto;

@@ -8,7 +8,7 @@
 
       <div class="comment__content flex flex-column flex-item-grow full-width">
         <div class="comment__author flex align-center gap-half">
-          <h3 class="font-weight-normal txt-normal flex-item-justify-start">
+          <h3 class="font-weight-normal txt-normal flex-item-justify-start min-width overflow-ellipsis">
             <strong>
               <%= link_to comment.creator.name, comment.creator, class: "txt-ink btn btn--plain fill-transparent", data: { turbo_frame: "_top" } %>
             </strong>
