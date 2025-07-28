@@ -7,7 +7,7 @@ class Card::Eventable::SystemCommenterTest < ActiveSupport::TestCase
   end
 
   test "card_assigned" do
-    assert_system_comment "Assigned to Kevin by David." do
+    assert_system_comment "David assigned this to Kevin" do
       @card.toggle_assignment users(:kevin)
     end
   end
@@ -16,13 +16,13 @@ class Card::Eventable::SystemCommenterTest < ActiveSupport::TestCase
     @card.toggle_assignment users(:kevin)
     @card.comments.destroy_all # To skip deduplication logic
 
-    assert_system_comment "Unassigned from Kevin by David" do
+    assert_system_comment "David unassigned from Kevin" do
       @card.toggle_assignment users(:kevin)
     end
   end
 
   test "card_staged" do
-    assert_system_comment "Moved to ‘In progress’ by David" do
+    assert_system_comment "David moved this to ‘In progress’" do
       @card.change_stage_to workflow_stages(:qa_in_progress)
     end
   end
@@ -34,7 +34,7 @@ class Card::Eventable::SystemCommenterTest < ActiveSupport::TestCase
   end
 
   test "card_title_changed" do
-    assert_system_comment "Title changed from ‘The text is too small’ to ‘Make text larger’ by David." do
+    assert_system_comment "David changed the title from ‘The text is too small’ to ‘Make text larger’" do
       @card.update! title: "Make text larger"
     end
   end
