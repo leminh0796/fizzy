@@ -38,7 +38,7 @@ class Notification::Bundle < ApplicationRecord
   def deliver
     processing!
 
-    BundleMailer.notification(self).deliver if notifications.any?
+    Notification::BundleMailer.notification(self).deliver if notifications.any?
 
     delivered!
   end
