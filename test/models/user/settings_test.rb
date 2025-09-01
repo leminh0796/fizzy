@@ -33,4 +33,15 @@ class User::SettingsTest < ActiveSupport::TestCase
 
     assert bundle.reload.pending?
   end
+
+  test "bundling_emails?" do
+    @settings.update!(bundle_email_frequency: :never)
+    assert_not @user.settings.bundling_emails?
+
+    @settings.update!(bundle_email_frequency: :every_few_hours)
+    assert @user.settings.bundling_emails?
+
+    @user.update!(role: :system)
+    assert_not @user.settings.bundling_emails?
+  end
 end

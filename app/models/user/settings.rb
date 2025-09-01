@@ -20,7 +20,7 @@ class User::Settings < ApplicationRecord
   end
 
   def bundling_emails?
-    !bundle_email_never?
+    !bundle_email_never? && !user.system?
   end
 
   private
