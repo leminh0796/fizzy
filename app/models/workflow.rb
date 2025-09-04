@@ -4,7 +4,8 @@ class Workflow < ApplicationRecord
     { name: "In progress", color: "var(--color-card-3)" }
   ]
 
-  has_many :stages, dependent: :delete_all
+  has_many :stages, dependent: :destroy
+  has_many :collections, dependent: :nullify
 
   after_create_commit :create_default_stages
 
