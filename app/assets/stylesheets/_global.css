@@ -70,6 +70,7 @@
   /* Z-index */
   --z-events-column-header: 1;
   --z-events-day-header: 3;
+  --z-nav: 11;
   --z-popup: 10;
   --z-terminal: 20;
   --z-tray: 21;

@@ -33,7 +33,7 @@
 
     #header:has(&) {
       position: relative;
-      z-index: 5;
+      z-index: var(--z-nav);
     }
 
     .card & {
