@@ -32,9 +32,7 @@
               <%= hidden_field_tag :assignment_status, "unassigned" %>
             <% end %>
 
-            <% if user_filtering.expanded? %>
-              <%= hidden_field_tag :expand_all, user_filtering.expanded? %>
-            <% end %>
+            <%= hidden_field_tag :expand_all, true, disabled: !user_filtering.expanded?, data: { toggle_enable_target: "element" } %>
 
             <%= form.button type: "submit", class: "popup__item btn" do %>
               <span class="overflow-ellipsis flex-item-grow">No one</span>
@@ -61,9 +59,7 @@
                 <%= hidden_field_tag "assignee_ids[]", user.id %>
               <% end %>
 
-              <% if user_filtering.expanded? %>
-                <%= hidden_field_tag :expand_all, user_filtering.expanded? %>
-              <% end %>
+              <%= hidden_field_tag :expand_all, true, disabled: !user_filtering.expanded?, data: { toggle_enable_target: "element" } %>
 
               <%= form.button type: "submit", class: "popup__item btn" do %>
                 <span class="overflow-ellipsis flex-item-grow"><%= user.name %></span>
