@@ -8,7 +8,7 @@ export default class extends Controller {
   }
 
   connect() {
-    this.dialogTarget.setAttribute('aria-hidden', 'true')
+    this.dialogTarget.setAttribute("aria-hidden", "true")
   }
 
   open() {
@@ -21,7 +21,7 @@ export default class extends Controller {
       orient(this.dialogTarget)
     }
 
-    this.dialogTarget.setAttribute('aria-hidden', 'false')
+    this.dialogTarget.setAttribute("aria-hidden", "false")
     this.dispatch("show")
   }
 
@@ -35,7 +35,7 @@ export default class extends Controller {
 
   close() {
     this.dialogTarget.close()
-    this.dialogTarget.setAttribute('aria-hidden', 'true')
+    this.dialogTarget.setAttribute("aria-hidden", "true")
     this.dialogTarget.blur()
     orient(this.dialogTarget, false)
   }

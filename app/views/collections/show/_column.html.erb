@@ -3,10 +3,23 @@
   data-drag-and-drop-target="container"
   data-drag-and-strum-target="container"
   data-collapsible-columns-target="column"
+  data-controller="clicker"
   data-action="turbo:before-morph-attribute->collapsible-columns#preventToggle"
   data-drag-and-drop-url="<%= columns_card_drops_column_path("__id__", column_id: column.id) %>"
 >
-  <%= render "collections/show/expander", title: column.name, count: column.cards.active.count %>
+  <%= render "collections/show/expander", title: column.name, count: column.cards.active.count do %>
+    <%= render "collections/show/menu/column", column: column %>
+  <% end %>
+
+  <div data-controller="dialog" data-action="keydown.esc->dialog#close click@document->dialog#closeOnClickOutside">
+    <button id="<%= dom_id(column, :manage_menu) %>" class="popup__btn btn" data-action="click->dialog#open:stop" data-clicker-target="clickable" hidden aria-hidden>Rename column</button>
+    <dialog class="popup panel flex-column gap fill-white shadow txt-small margin-block-double" data-dialog-target="dialog">
+      <%= form_with model: [column.collection, column], data: { action: "turbo:submit-end->dialog#close" } do |form| %>
+        <%= form.text_field :name, class: "input", placeholder: "Column name", value: column.name, required: true %>
+        <%= form.submit "Rename column", class: "btn btn--link" %>
+      <% end %>
+    </dialog>
+  </div>
 
   <%= column_frame_tag dom_id(column, :cards), src: collection_column_path(column.collection, column) %>
 </section>

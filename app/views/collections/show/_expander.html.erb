@@ -1,20 +1,7 @@
-<header class="cards__expander" data-action="click->collapsible-columns#toggle" style="--card-count: <%= [count, 20].min %>" aria-role="button">
-  <span class="cards__expander-count" data-drag-and-drop-counter="true"><%= count > 99 ? "99+" : count %></span>
-  <h2 class="cards__expander-title"><%= title %></h2>
-  <div class="cards__expander-menu position-relative" data-controller="dialog" data-action="keydown.esc->dialog#close click@document->dialog#closeOnClickOutside">
-    <button class="btn btn--circle txt-x-small borderless" data-action="click->dialog#open:stop">
-      <%= icon_tag "menu-dots-horizontal", class: "translucent" %>
-      <span class="for-screen-reader">Column options</span>
-    </button>
-    <dialog class="popup panel flex-column gap fill-white shadow txt-small margin-block-double" data-dialog-target="dialog">
-      <ul class="popup__list">
-        <li class="popup__item">
-          <button class="popup__btn btn">Rename column</button>
-        </li>
-        <li class="popup__item">
-          <button class="popup__btn btn">Delete column</button>
-        </li>
-      </ul>
-    </dialog>
-  </div>
-</header>
+<div>
+  <header class="cards__expander" data-action="click->collapsible-columns#toggle" style="--card-count: <%= [count, 20].min %>" aria-role="button">
+    <span class="cards__expander-count" data-drag-and-drop-counter="true"><%= count > 99 ? "99+" : count %></span>
+    <h2 class="cards__expander-title"><%= title %></h2>
+  </header>
+  <%= yield if block_given? %>
+</div>
