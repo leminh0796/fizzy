@@ -5,11 +5,9 @@ class FilterTest < ActiveSupport::TestCase
     Current.set session: sessions(:david) do
       @new_collection = Collection.create! name: "Inaccessible Collection"
       @new_card = @new_collection.cards.create!
-      @new_card.update!(stage: workflow_stages(:qa_on_hold))
 
       cards(:layout).comments.create!(body: "I hate haggis")
       cards(:logo).comments.create!(body: "I love haggis")
-      cards(:logo).update(stage: workflow_stages(:qa_on_hold))
     end
 
     assert_not_includes users(:kevin).filters.new.cards, @new_card

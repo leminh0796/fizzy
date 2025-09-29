@@ -13,7 +13,6 @@ Rails.application.routes.draw do
   resources :collections do
     scope module: :collections do
       resource :subscriptions
-      resource :workflow, only: :update
       resource :involvement
       resource :publication
       resource :entropy_configuration

@@ -71,11 +71,11 @@ class CardTest < ActiveSupport::TestCase
   end
 
   test "open" do
-    assert_equal cards(:logo, :layout, :text), Card.open
+    assert_equal cards(:logo, :layout, :text, :buy_domain), Card.open
   end
 
   test "card_unassigned" do
-    assert_equal cards(:shipping, :text), Card.unassigned
+    assert_equal cards(:shipping, :text, :buy_domain), Card.unassigned
   end
 
   test "assigned to" do
@@ -88,7 +88,7 @@ class CardTest < ActiveSupport::TestCase
 
   test "in collection" do
     new_collection = Collection.create! name: "New Collection", creator: users(:david)
-    assert_equal cards(:logo, :shipping, :layout, :text), Card.where(collection: collections(:writebook))
+    assert_equal cards(:logo, :shipping, :layout, :text, :buy_domain), Card.where(collection: collections(:writebook))
     assert_empty Card.where(collection: new_collection)
   end
 

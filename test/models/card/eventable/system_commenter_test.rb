@@ -21,12 +21,6 @@ class Card::Eventable::SystemCommenterTest < ActiveSupport::TestCase
     end
   end
 
-  test "card_staged" do
-    assert_system_comment "David moved this to ‘In progress’" do
-      @card.change_stage_to workflow_stages(:qa_in_progress)
-    end
-  end
-
   test "card_closed" do
     assert_system_comment "Closed as ‘Done’ by David" do
       @card.close
