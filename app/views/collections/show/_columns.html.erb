@@ -8,7 +8,7 @@
         dragenter->drag-and-strum#dragEnter
         drop->drag-and-drop#drop
         dragend->drag-and-drop#dragEnd" } do %>
-  <div class="card-columns" data-controller="collapsible-columns" data-collapsible-columns-collection-value="<%= collection.id %>" data-collapsible-columns-collapsed-class="is-collapsed">
+  <div class="card-columns" data-controller="collapsible-columns" data-collapsible-columns-collection-value="<%= collection.id %>" data-collapsible-columns-collapsed-class="is-collapsed" data-collapsible-columns-no-transitions-class="no-transitions">
     <div class="card-columns__left">
       <%= render "collections/show/not_now", collection: collection %>
     </div>

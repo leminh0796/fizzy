@@ -1,6 +1,5 @@
 <div class="settings__panel settings__panel--entropy panel shadow center">
   <h2 class="divider txt-large">Auto close</h2>
-  <p class="margin-none-block-start">This is the default setting for this account, you can override it in each collections.</p>
-  <p class="margin-none-block-start">Cards automatically close as “Not now” if there is no activity for…</p>
+  <p class="margin-none-block-start">Fizzy doesn’t let stale cards stick around forever. Cards automatically close as “Not now” without activity for specific period of time. <em>This is the default, global setting — you can override it in each collection.</em></p>
   <%= render "entropy/auto_close", model: account.default_entropy_configuration, url: account_entropy_configuration_path %>
 </div>

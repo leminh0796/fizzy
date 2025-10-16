@@ -22,7 +22,7 @@ class Card::Eventable::SystemCommenterTest < ActiveSupport::TestCase
   end
 
   test "card_closed" do
-    assert_system_comment "Closed as ‘Done’ by David" do
+    assert_system_comment "Marked as “Done” by David" do
       @card.close
     end
   end

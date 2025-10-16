@@ -2,7 +2,7 @@ class Cards::ClosuresController < ApplicationController
   include CardScoped
 
   def create
-    @card.close(user: Current.user, reason: params[:reason])
+    @card.close(user: Current.user)
     render_card_replacement
   end
 

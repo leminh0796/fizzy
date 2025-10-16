@@ -28,10 +28,10 @@ module Card::Closeable
     closure&.created_at
   end
 
-  def close(user: Current.user, reason: Closure::Reason.default)
+  def close(user: Current.user)
     unless closed?
       transaction do
-        create_closure! user: user, reason: reason
+        create_closure! user: user
         track_event :closed, creator: user
       end
     end

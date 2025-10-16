@@ -84,7 +84,7 @@ module EventsHelper
     when "card_published"
       "#{h event_creator_name(event) } added <span style='color: var(--card-color)'>#{h title }</span>".html_safe
     when "card_closed"
-      "#{h event_creator_name(event) } closed <span style='color: var(--card-color)'>#{h title }</span>".html_safe
+      "#{h event_creator_name(event) } marked <span style='color: var(--card-color)'>#{h title }</span> as done".html_safe
     when "card_reopened"
       "#{h event_creator_name(event) } reopened <span style='color: var(--card-color)'>#{h title }</span>".html_safe
     when "card_due_date_added"

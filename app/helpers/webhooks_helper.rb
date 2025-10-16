@@ -1,7 +1,7 @@
 module WebhooksHelper
   ACTION_LABELS = {
     card_assigned: "Card assigned",
-    card_closed: "Card closed",
+    card_closed: "Card marked as Done",
     card_collection_changed: "Card collection changed",
     card_due_date_added: "Card due date added",
     card_due_date_changed: "Card due date changed",

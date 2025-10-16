@@ -17,7 +17,6 @@ class Account < ApplicationRecord
   def setup_basic_template
     user = User.first
 
-    Closure::Reason.create_defaults
     Collection.create!(name: "Cards", creator: user, all_access: true)
   end
 end
