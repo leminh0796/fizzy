@@ -1,4 +1,5 @@
 class Search::RefreshEmbeddingJob < ApplicationJob
+  retry_on RubyLLM::ForbiddenError
   discard_on ActiveJob::DeserializationError
 
   def perform(record)
