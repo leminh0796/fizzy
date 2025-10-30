@@ -1,11 +1,10 @@
-<%= tag.div class: "settings__panel settings__panel--users panel shadow center", data: {
-  controller: "filter navigable-list",
-  action: "keydown->navigable-list#navigate filter:changed->navigable-list#reset",
-  navigable_list_focus_on_selection_value: true,
-  navigable_list_actionable_items_value: true
-} do %>
-
+<div class="settings__panel settings__panel--users panel shadow center"
+     data-controller="filter navigable-list"
+     data-action="keydown->navigable-list#navigate filter:changed->navigable-list#reset"
+     navigable-list-focus-on-selection-value="true"
+     navigable-list-actionable-items-value="true">
   <h2 class="divider txt-large">People on the account</h2>
+
   <%= render "account/invite" %>
 
   <div class="settings__user-filter">
@@ -15,4 +14,4 @@
       <%= render partial: "account/user", collection: users %>
     </ul>
   </div>
-<% end %>
+</div>
