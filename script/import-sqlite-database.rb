@@ -227,9 +227,10 @@ class Import
     def copy_cards
       step("Copying cards", "Copied %{count} cards in %{duration}") do
         mapping[:cards] ||= {}
+        account.update_columns(cards_count: import.cards.maximum(:id) || 0)
+
         next_id = (Card.maximum(:id) || 0) + 1
 
-        # Collect all associated records to batch insert
         activity_spikes_to_insert = []
         engagements_to_insert = []
         goldnesses_to_insert = []
@@ -250,6 +251,7 @@ class Import
 
             cards_to_insert << {
               id: new_id,
+              number: old_card.id,
               account_id: account.id,
               board_id: mapping[:boards][old_card.board_id],
               column_id: old_card.column_id ? mapping[:columns][old_card.column_id] : nil,
@@ -324,7 +326,6 @@ class Import
           Card.insert_all(cards_to_insert)
         end
 
-        # Batch insert all associated records
         Card::ActivitySpike.insert_all(activity_spikes_to_insert) if activity_spikes_to_insert.any?
         Card::Engagement.insert_all(engagements_to_insert) if engagements_to_insert.any?
         Card::Goldness.insert_all(goldnesses_to_insert) if goldnesses_to_insert.any?
@@ -332,7 +333,6 @@ class Import
         Assignment.insert_all(assignments_to_insert) if assignments_to_insert.any?
         Closure.insert_all(closures_to_insert) if closures_to_insert.any?
 
-        # Second pass: copy rich text and attachments
         import.cards.find_each do |old_card|
           new_card_id = mapping[:cards][old_card.id]
           new_card = Card.find(new_card_id)

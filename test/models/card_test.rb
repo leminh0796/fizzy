@@ -5,6 +5,19 @@ class CardTest < ActiveSupport::TestCase
     Current.session = sessions(:david)
   end
 
+  test "create assigns a number to the card" do
+    user = users(:david)
+    board = boards(:writebook)
+    account = board.account
+    card = nil
+
+    assert_difference -> { account.reload.cards_count }, +1 do
+      card = Card.create!(title: "Test", board: board, creator: user)
+    end
+
+    assert_equal account.reload.cards_count, card.number
+  end
+
   test "capturing messages" do
     assert_difference -> { cards(:logo).comments.count }, +1 do
       cards(:logo).comments.create!(body: "Agreed.")

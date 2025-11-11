@@ -1,7 +1,9 @@
 37s:
   name: 37signals
   external_account_id: <%= ActiveRecord::FixtureSet.identify("37signals") %>
+  cards_count: 5
 
 initech:
   name: Initech LLC
   external_account_id: <%= ActiveRecord::FixtureSet.identify("initech") %>
+  cards_count: 0
