@@ -1,5 +1,5 @@
 active:
-  id: <%= ActiveRecord::FixtureSet.identify("active_webhook", :uuid) %>
+  id: <%= ActiveRecord::FixtureSet.identify("active", :uuid) %>
   active: true
   name: Production API
   url: https://api.example.com/webhooks
@@ -9,7 +9,7 @@ active:
   account: 37s_uuid
 
 inactive:
-  id: <%= ActiveRecord::FixtureSet.identify("inactive_webhook", :uuid) %>
+  id: <%= ActiveRecord::FixtureSet.identify("inactive", :uuid) %>
   active: false
   name: Test Webhook
   url: https://test.example.com/webhooks

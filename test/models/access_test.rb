@@ -68,7 +68,7 @@ class AccessTest < ActiveSupport::TestCase
   test "watches are destroyed when access is lost" do
     kevin = users(:kevin)
     board = boards(:writebook)
-    card = board.cards.first
+    card = cards(:logo) # Kevin watches this card
 
     assert card.watched_by?(kevin)
 

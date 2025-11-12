@@ -20,7 +20,7 @@ class BoardsControllerTest < ActionDispatch::IntegrationTest
       post boards_path, params: { board: { name: "Remodel Punch List" } }
     end
 
-    board = Board.last
+    board = Board.order(created_at: :desc).first
     assert_redirected_to board_path(board)
     assert_includes board.users, users(:kevin)
     assert_equal "Remodel Punch List", board.name

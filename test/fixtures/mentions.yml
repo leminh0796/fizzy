@@ -1,6 +1,6 @@
 logo_card_david_mention_by_jz:
   id: <%= ActiveRecord::FixtureSet.identify("logo_card_david_mention_by_jz", :uuid) %>
-  source: logo_uuid_uuid (Card)
+  source: logo_uuid (Card)
   mentioner: jz_uuid
   mentionee: david_uuid
 

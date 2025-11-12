@@ -20,8 +20,9 @@ class CardsControllerTest < ActionDispatch::IntegrationTest
       post board_cards_path(boards(:writebook))
     end
 
-    assert Card.last.drafted?
-    assert_redirected_to Card.last
+    card = Card.order(created_at: :desc).first
+    assert card.drafted?
+    assert_redirected_to card
   end
 
   test "create resumes existing draft if it exists" do

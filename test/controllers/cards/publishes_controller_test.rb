@@ -26,7 +26,8 @@ class Cards::PublishesControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert Card.last.drafted?
-    assert_redirected_to Card.last
+    new_card = Card.order(created_at: :desc).first
+    assert new_card.drafted?
+    assert_redirected_to new_card
   end
 end

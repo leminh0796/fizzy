@@ -23,7 +23,7 @@ class CardTest < ActiveSupport::TestCase
       cards(:logo).comments.create!(body: "Agreed.")
     end
 
-    assert_equal "Agreed.", cards(:logo).comments.last.body.to_plain_text.chomp
+    assert_equal "Agreed.", cards(:logo).comments.order(created_at: :desc).first.body.to_plain_text.chomp
   end
 
   test "assignment states" do
@@ -38,15 +38,17 @@ class CardTest < ActiveSupport::TestCase
       cards(:logo).toggle_assignment users(:kevin)
     end
     assert_not cards(:logo).assigned_to?(users(:kevin))
-    assert_equal "card_unassigned", Event.last.action
-    assert_equal [ users(:kevin) ], Event.last.assignees
+    unassign_event = Event.order(created_at: :desc).first
+    assert_equal "card_unassigned", unassign_event.action
+    assert_equal [ users(:kevin) ], unassign_event.assignees
 
     assert_difference %w[ cards(:logo).assignees.count Event.count ], +1 do
       cards(:logo).toggle_assignment users(:kevin)
     end
     assert cards(:logo).assigned_to?(users(:kevin))
-    assert_equal "card_assigned", Event.last.action
-    assert_equal [ users(:kevin) ], Event.last.assignees
+    assign_event = Event.order(created_at: :desc).first
+    assert_equal "card_assigned", assign_event.action
+    assert_equal [ users(:kevin) ], assign_event.assignees
   end
 
   test "tagged states" do
@@ -85,24 +87,24 @@ class CardTest < ActiveSupport::TestCase
   end
 
   test "open" do
-    assert_same_elements cards(:logo, :layout, :text, :buy_domain), Card.open
+    assert_equal cards(:logo, :layout, :text, :buy_domain).to_set, Card.open.to_set
   end
 
   test "card_unassigned" do
-    assert_same_elements cards(:shipping, :text, :buy_domain), Card.unassigned
+    assert_equal cards(:shipping, :text, :buy_domain).to_set, Card.unassigned.to_set
   end
 
   test "assigned to" do
-    assert_same_elements cards(:logo, :layout), Card.assigned_to(users(:jz))
+    assert_equal cards(:logo, :layout).to_set, Card.assigned_to(users(:jz)).to_set
   end
 
   test "assigned by" do
-    assert_same_elements cards(:layout, :logo), Card.assigned_by(users(:david))
+    assert_equal cards(:layout, :logo).to_set, Card.assigned_by(users(:david)).to_set
   end
 
   test "in board" do
     new_board = Board.create! name: "New Board", creator: users(:david)
-    assert_same_elements cards(:logo, :shipping, :layout, :text, :buy_domain), Card.where(board: boards(:writebook))
+    assert_equal cards(:logo, :shipping, :layout, :text, :buy_domain).to_set, Card.where(board: boards(:writebook)).to_set
     assert_empty Card.where(board: new_board)
   end
 

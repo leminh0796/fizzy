@@ -16,7 +16,7 @@ class FiltersControllerTest < ActionDispatch::IntegrationTest
     end
     assert_response :success
 
-    filter = Filter.last
+    filter = Filter.order(created_at: :desc).first
     assert_predicate filter.indexed_by, :closed?
     assert_predicate filter.assignment_status, :unassigned?
     assert_equal [ tags(:mobile) ], filter.tags
