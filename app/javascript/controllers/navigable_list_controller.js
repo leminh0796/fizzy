@@ -141,7 +141,7 @@ export default class extends Controller {
   }
 
   get #isFocusContainedOnNavigableItem() {
-    return !this.onlyActOnFocusedItemsValue && this.itemTargets.some(item => item.contains(document.activeElement))
+    return !this.onlyActOnFocusedItemsValue || this.itemTargets.some(item => item === document.activeElement || item.contains(document.activeElement))
   }
 
   #toggleCurrentItem(event) {
