@@ -46,7 +46,7 @@ ActiveRecord::Schema[8.2].define(version: 2025_11_20_203100) do
 
   create_table "action_text_rich_texts", id: :uuid, charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.uuid "account_id", null: false
-    t.text "body"
+    t.text "body", size: :long
     t.datetime "created_at", null: false
     t.string "name", null: false
     t.uuid "record_id", null: false
