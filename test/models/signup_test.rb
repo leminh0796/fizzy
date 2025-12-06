@@ -52,4 +52,15 @@ class SignupTest < ActiveSupport::TestCase
       assert_not_empty signup_invalid.errors[:full_name]
     end
   end
+
+  test "#complete with invalid data" do
+    Current.without_account do
+      signup = Signup.new
+      assert_not signup.complete
+      assert signup.errors[:full_name].any?
+      assert signup.errors[:identity].any?
+      assert_nil signup.account
+      assert_nil signup.user
+    end
+  end
 end
