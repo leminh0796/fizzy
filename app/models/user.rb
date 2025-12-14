@@ -6,6 +6,8 @@ class User < ApplicationRecord
   belongs_to :account
   belongs_to :identity, optional: true
 
+  validates :name, presence: true
+
   has_many :comments, inverse_of: :creator, dependent: :destroy
 
   has_many :filters, foreign_key: :creator_id, inverse_of: :creator, dependent: :destroy
