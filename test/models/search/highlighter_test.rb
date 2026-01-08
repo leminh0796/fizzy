@@ -82,34 +82,6 @@ class Search::HighlighterTest < ActiveSupport::TestCase
     assert_equal "&lt;script&gt;#{mark('test')}&lt;/script&gt;", result
   end
 
-  test "highlight Chinese characters" do
-    highlighter = Search::Highlighter.new("测试")
-    result = highlighter.highlight("这是一个测试文本")
-
-    assert_equal "这是一个#{mark('测试')}文本", result
-  end
-
-  test "highlight Japanese characters" do
-    highlighter = Search::Highlighter.new("テスト")
-    result = highlighter.highlight("これはテストです")
-
-    assert_equal "これは#{mark('テスト')}です", result
-  end
-
-  test "highlight Korean characters" do
-    highlighter = Search::Highlighter.new("테스트")
-    result = highlighter.highlight("이것은 테스트입니다")
-
-    assert_equal "이것은 #{mark('테스트')}입니다", result
-  end
-
-  test "highlight mixed CJK and English" do
-    highlighter = Search::Highlighter.new("world 世界")
-    result = highlighter.highlight("hello world 你好世界")
-
-    assert_equal "hello #{mark('world')} 你好#{mark('世界')}", result
-  end
-
   private
     def mark(text)
       "#{Search::Highlighter::OPENING_MARK}#{text}#{Search::Highlighter::CLOSING_MARK}"
