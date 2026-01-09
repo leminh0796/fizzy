@@ -49,7 +49,7 @@ module AccessesHelper
       aria: { labelledby: dom_id(board, :involvement_label) },
       title: (label_text if icon_only),
       class: class_names("btn", { "btn--reversed": access.watching? && icon_only }),
-      data: { bridge__overflow_menu_target: "item" }) do
+      data: !icon_only && { bridge__overflow_menu_target: "item" }) do
         icon_tag("notification-bell-#{icon_only ? 'reverse-' : nil}#{access.involvement.dasherize}") +
         tag.span(label_text, class: class_names("txt-nowrap txt-uppercase", "for-screen-reader": icon_only), id: dom_id(board, :involvement_label))
     end
