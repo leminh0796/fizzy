@@ -123,6 +123,10 @@
       }
     }
 
+    &:has(.popup__btn[disabled]) {
+      pointer-events: none;
+    }
+
     .checked {
       display: none;
     }
