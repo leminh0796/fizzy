@@ -13,6 +13,16 @@ class Cards::CommentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "create on draft card is forbidden" do
+    draft_card = boards(:writebook).cards.create!(status: :drafted, creator: users(:kevin))
+
+    assert_no_difference -> { draft_card.comments.count } do
+      post card_comments_path(draft_card), params: { comment: { body: "This should be forbidden" } }, as: :json
+    end
+
+    assert_response :forbidden
+  end
+
   test "update" do
     put card_comment_path(cards(:logo), comments(:logo_agreement_kevin)), params: { comment: { body: "I've changed my mind" } }, as: :turbo_stream
 

@@ -5,18 +5,18 @@ class Card::SearchableTest < ActiveSupport::TestCase
 
   test "card search" do
     # Searching by title
-    card = @board.cards.create!(title: "layout is broken", creator: @user)
+    card = @board.cards.create!(title: "layout is broken", status: "published", creator: @user)
     results = Card.mentioning("layout", user: @user)
     assert_includes results, card
 
     # Searching by comment
-    card_with_comment = @board.cards.create!(title: "Some card", creator: @user)
+    card_with_comment = @board.cards.create!(title: "Some card", status: "published", creator: @user)
     card_with_comment.comments.create!(body: "overflowing text", creator: @user)
     results = Card.mentioning("overflowing", user: @user)
     assert_includes results, card_with_comment
 
     # Sanitizing search query
-    card_broken = @board.cards.create!(title: "broken layout", creator: @user)
+    card_broken = @board.cards.create!(title: "broken layout", status: "published", creator: @user)
     results = Card.mentioning("broken \"", user: @user)
     assert_includes results, card_broken
 
@@ -25,8 +25,8 @@ class Card::SearchableTest < ActiveSupport::TestCase
 
     # Filtering by board_ids
     other_board = Board.create!(name: "Other Board", account: @account, creator: @user)
-    card_in_board = @board.cards.create!(title: "searchable content", creator: @user)
-    card_in_other_board = other_board.cards.create!(title: "searchable content", creator: @user)
+    card_in_board = @board.cards.create!(title: "searchable content", status: "published", creator: @user)
+    card_in_other_board = other_board.cards.create!(title: "searchable content", status: "published", creator: @user)
     results = Card.mentioning("searchable", user: @user)
     assert_includes results, card_in_board
     assert_not_includes results, card_in_other_board
@@ -37,7 +37,7 @@ class Card::SearchableTest < ActiveSupport::TestCase
 
     # Create a card with unreasonably long content
     long_content = "asdf " * Searchable::SEARCH_CONTENT_LIMIT
-    card = @board.cards.create!(title: "Card with long description", creator: @user)
+    card = @board.cards.create!(title: "Card with long description", status: "published", creator: @user)
     card.description = ActionText::Content.new(long_content)
     card.save!
 
@@ -52,7 +52,7 @@ class Card::SearchableTest < ActiveSupport::TestCase
 
   test "deleting card removes search record and FTS entry" do
     search_record_class = Search::Record.for(@user.account_id)
-    card = @board.cards.create!(title: "Card to delete", creator: @user)
+    card = @board.cards.create!(title: "Card to delete", status: "published", creator: @user)
 
     # Verify search record exists
     search_record = search_record_class.find_by(searchable_type: "Card", searchable_id: card.id)

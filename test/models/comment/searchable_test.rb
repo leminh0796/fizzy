@@ -4,7 +4,7 @@ class Comment::SearchableTest < ActiveSupport::TestCase
   include SearchTestHelper
 
   setup do
-    @card = @board.cards.create!(title: "Test Card", creator: @user)
+    @card = @board.cards.create!(title: "Test Card", status: "published", creator: @user)
   end
 
   test "comment search" do
@@ -40,9 +40,9 @@ class Comment::SearchableTest < ActiveSupport::TestCase
     end
 
     # Finding cards via comment search
-    card_with_comment = @board.cards.create!(title: "Card One", creator: @user)
+    card_with_comment = @board.cards.create!(title: "Card One", status: "published", creator: @user)
     card_with_comment.comments.create!(body: "unique searchable phrase", creator: @user)
-    card_without_comment = @board.cards.create!(title: "Card Two", creator: @user)
+    card_without_comment = @board.cards.create!(title: "Card Two", status: "published", creator: @user)
     results = Card.mentioning("searchable", user: @user)
     assert_includes results, card_with_comment
     assert_not_includes results, card_without_comment

@@ -8,6 +8,8 @@ class Comment < ApplicationRecord
 
   has_rich_text :body
 
+  validate :card_is_commentable
+
   scope :chronologically, -> { order created_at: :asc, id: :desc }
   scope :preloaded, -> { with_rich_text_body.includes(reactions: :reacter) }
   scope :by_system, -> { joins(:creator).where(creator: { role: :system }) }
@@ -22,6 +24,10 @@ class Comment < ApplicationRecord
   end
 
   private
+    def card_is_commentable
+      errors.add(:card, "does not allow comments") unless card.commentable?
+    end
+
     def watch_card_by_creator
       card.watch_by creator
     end
