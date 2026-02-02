@@ -49,7 +49,7 @@
   </section>
 
   <% if Current.user == @user %>
-    <section class="panel shadow" style="--panel-size: 45ch;">
+    <section class="panel shadow hide-on-native" style="--panel-size: 45ch;">
       <%= render "users/theme" %>
       <%= render "users/transfer", user: @user %>
       <%= render "users/access_tokens" %>
