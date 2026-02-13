@@ -8,16 +8,20 @@ image: fizzy
 # Where to deploy fizzy
 servers:
   web:
-    - fizzy.example.com  # Set your server name here
+    hosts:
+      - 154.26.128.168  # Set your server name here
+    proxy: false  # Disable kamal-proxy since we're using Nginx
+    options:
+      publish:
+        - "127.0.0.1:3006:80"  # Map host port 3006 to container port 80
 
 # How you connect to your server
 ssh:
-  user: root  # If you use a different username to SSH to your server, specify it here
+  user: tlminh  # If you use a different username to SSH to your server, specify it here
 
-# Automatic SSL
+# Proxy configuration (disabled, but keeping host for reference)
 proxy:
-  ssl: true                # Set this to false if you *don't* want SSL
-  host: fizzy.example.com  # Set your server name here to use automatic SSL
+  host: fizzy.minhcode.net
 
 # Your application configuration (secrets come from .kamal/secrets).
 env:
@@ -28,9 +32,10 @@ env:
     - SMTP_USERNAME
     - SMTP_PASSWORD
   clear:
-    BASE_URL: https://fizzy.example.com # The public URL of your Fizzy instance
-    MAILER_FROM_ADDRESS: support@example.com # The email "from" address that Fizzy sends email from
-    SMTP_ADDRESS: mail.example.com # The SMTP server you'll use to send email
+    BASE_URL: https://fizzy.minhcode.net # The public URL of your Fizzy instance
+    MAILER_FROM_ADDRESS: support@minhcode.net # The email "from" address that Fizzy sends email from
+    SMTP_ADDRESS: email-smtp.ap-southeast-1.amazonaws.com # AWS SES SMTP server (change region if needed)
+    SMTP_TLS: true # Enable TLS for AWS SES
     MULTI_TENANT: false # Set to true to allow multiple accounts to sign up
     SOLID_QUEUE_IN_PUMA: true # Run background jobs in the app container
 
