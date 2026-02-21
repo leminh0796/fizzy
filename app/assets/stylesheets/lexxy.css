@@ -12,10 +12,10 @@
 
   --lexxy-color-canvas: var(--color-canvas);
 
-  --lexxy-color-accent-dark: var(--color-accent-dark);
-  --lexxy-color-accent-medium: var(--color-accent-medium);
-  --lexxy-color-accent-light: var(--color-accent-light);
-  --lexxy-color-accent-lightest: var(--color-accent-lightest);
+  --lexxy-color-accent-dark: var(--color-ink-dark);
+  --lexxy-color-accent-medium: var(--color-ink-medium);
+  --lexxy-color-accent-light: var(--color-ink-light);
+  --lexxy-color-accent-lightest: var(--color-ink-lighter);
 
   --lexxy-color-red: oklch(var(--lch-red-medium));
   --lexxy-color-green: oklch(var(--lch-green-medium));
@@ -38,6 +38,8 @@
   --lexxy-color-table-cell-selected-bg: var(--lexxy-color-selected);
   --lexxy-color-table-cell-toggle: var(--lexxy-color-selected);
   --lexxy-color-table-cell-remove: oklch(var(--lch-red-medium) / 20%);
+
+  --lexxy-focus-ring-offset: 2px;
 }
 
 @layer components {
@@ -139,7 +141,9 @@
     }
 
     ol, ul {
-      padding-inline-start: 1ch;
+      &:not(.lexxy-prompt-menu) {
+        padding-inline-start: 1ch;
+      }
     }
 
     blockquote {

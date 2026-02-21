@@ -5,6 +5,7 @@ logo_assignment_kevin:
   card: logo_uuid
   unread_count: 2
   created_at: <%= 1.week.ago %>
+  updated_at: <%= 1.week.ago + 1.second %>
   creator: david_uuid
   account: 37s_uuid
 
@@ -15,6 +16,7 @@ layout_commented_kevin:
   card: layout_uuid
   unread_count: 1
   created_at: <%= 1.week.ago %>
+  updated_at: <%= 1.week.ago + 2.seconds %>
   creator: david_uuid
   account: 37s_uuid
 
@@ -25,5 +27,6 @@ logo_mentioned_david:
   card: logo_uuid
   unread_count: 2
   created_at: <%= 1.week.ago %>
+  updated_at: <%= 1.week.ago + 3.seconds %>
   creator: david_uuid
   account: 37s_uuid

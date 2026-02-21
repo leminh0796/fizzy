@@ -54,7 +54,7 @@ group :development, :test do
 end
 
 group :development do
-  gem "web-console"
+  gem "web-console", github: "rails/web-console"
 end
 
 group :test do

@@ -10,7 +10,13 @@ class Notification < ApplicationRecord
   scope :unread, -> { where(read_at: nil) }
   scope :read, -> { where.not(read_at: nil) }
   scope :ordered, -> { order(read_at: :desc, updated_at: :desc) }
-  scope :preloaded, -> { preload(:card, :creator, :account, source: [ :board, :creator, { eventable: [ :closure, :board, :assignments ] } ]) }
+  scope :preloaded, -> {
+    preload(
+      :creator, :account,
+      card: [ :board, :column, :closure, :not_now ],
+      source: [ :board, :creator, { eventable: [ :closure, :board, :assignments ] } ]
+    )
+  }
 
   before_validation :set_card
   after_create :bundle
