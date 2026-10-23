@@ -1,3 +1,7 @@
+## This installation
+
+Production deploys of the latest `origin/main` commit use `bin/deploy`. See [production-deploy.md](production-deploy.md). `bin/kamal deploy` is not the command for this host.
+
 ## Deploying Fizzy with Kamal
 
 If you'd like to run Fizzy on your own server while having the freedom to easily make changes to its code, we recommend deploying it with [Kamal](https://kamal-deploy.org/).

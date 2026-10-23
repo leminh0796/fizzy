@@ -1,0 +1,826 @@
+#!/usr/bin/env bash
+# Deploy the exact origin/main commit to production.
+#
+# Usage:
+#   bin/deploy
+#   bin/deploy --preflight
+#   bin/deploy --import-secrets
+#
+# Secrets are read from .kamal/production.env (mode 0600). The file is never
+# printed. Kamal still maps SECRET_KEY_BASE from RAILS_MASTER_KEY in
+# .kamal/secrets. This script does not generate or rotate credentials.
+
+set -euo pipefail
+set +o xtrace
+
+if [ -z "${BASH_VERSINFO:-}" ] || [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+  for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    if [ -x "$candidate" ]; then
+      exec "$candidate" "$0" "$@"
+    fi
+  done
+  printf 'bin/deploy: bash 4 or newer is required. On macOS: brew install bash\n' >&2
+  exit 1
+fi
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$REPO_ROOT"
+
+activate_toolchain() {
+  local mise_bin=""
+
+  if command -v mise >/dev/null 2>&1; then
+    mise_bin=$(command -v mise)
+  elif [ -x "$HOME/.local/bin/mise" ]; then
+    mise_bin="$HOME/.local/bin/mise"
+  fi
+
+  if [ -n "$mise_bin" ]; then
+    # shellcheck disable=SC1090
+    eval "$("$mise_bin" activate bash)"
+  fi
+}
+
+SECRETS_FILE=${FIZZY_SECRETS_FILE:-"$REPO_ROOT/.kamal/production.env"}
+HISTORY_FILE=${FIZZY_RELEASE_HISTORY:-"$REPO_ROOT/.kamal/release-history"}
+CUTOVER_MARK=${FIZZY_CUTOVER_MARK:-"$REPO_ROOT/.kamal/cutover-started"}
+LOCAL_LOCK_DIR=${FIZZY_LOCAL_LOCK_DIR:-"$REPO_ROOT/.kamal/deploy.lock"}
+PUBLIC_CURL_AGENT=${FIZZY_CURL_AGENT:-"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"}
+
+REQUIRED_SECRETS="RAILS_MASTER_KEY VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY AWS_SES_SMTP_USERNAME AWS_SES_SMTP_PASSWORD"
+OPTIONAL_SECRETS="KAMAL_REGISTRY_PASSWORD"
+DEPLOY_HOST=""
+DEPLOY_USER=""
+DEPLOY_SERVICE=""
+DEPLOY_VOLUME=""
+DEPLOY_IMAGE=""
+DEPLOY_REGISTRY=""
+DEPLOY_BASE_URL=""
+TARGET_SHA=""
+PREVIOUS_VERSION=""
+BACKUP_STAMP=""
+WORKTREE=""
+
+usage() {
+  cat <<'USAGE'
+Usage: bin/deploy [--preflight | --import-secrets]
+
+  bin/deploy
+      Deploy the current origin/main commit. Expect brief downtime while the
+      fixed port is moved from the old container to the new one.
+
+  bin/deploy --preflight
+      Load secrets, check prerequisites, and print the commit that would be
+      deployed. Does not build an image or stop a container.
+
+  bin/deploy --import-secrets
+      If .kamal/production.env is missing, copy the running container's
+      application secrets into that file (mode 0600) and validate them.
+      Existing files are left untouched.
+
+Secrets live in .kamal/production.env. See docs/production-deploy.md.
+USAGE
+}
+
+die() {
+  printf 'bin/deploy: %s\n' "$1" >&2
+  exit 1
+}
+
+require_safe_token() {
+  local label="$1"
+  local value="$2"
+  local pattern="$3"
+
+  if ! printf '%s' "$value" | grep -Eq "$pattern"; then
+    die "Refusing unsafe ${label} from config/deploy.yml"
+  fi
+}
+
+parse_deploy_config() {
+  local file="$REPO_ROOT/config/deploy.yml"
+
+  DEPLOY_SERVICE=$(sed -n 's/^service:[[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' "$file" | head -n 1)
+  DEPLOY_USER=$(sed -n 's/^[[:space:]]*user:[[:space:]]*\([A-Za-z0-9._-]*\).*/\1/p' "$file" | head -n 1)
+  DEPLOY_HOST=$(sed -n 's/^[[:space:]]*-[[:space:]]*\([0-9A-Za-z.-]*\).*/\1/p' "$file" | head -n 1)
+  DEPLOY_VOLUME=$(sed -n 's/^[[:space:]]*-[[:space:]]*"\?\([A-Za-z0-9_.-]*\):\/rails\/storage.*/\1/p' "$file" | head -n 1)
+  DEPLOY_IMAGE=$(sed -n 's/^image:[[:space:]]*\([A-Za-z0-9_.\/-]*\).*/\1/p' "$file" | head -n 1)
+  DEPLOY_REGISTRY=$(sed -n 's/^[[:space:]]*server:[[:space:]]*\([A-Za-z0-9.:-]*\).*/\1/p' "$file" | head -n 1)
+  DEPLOY_BASE_URL=$(sed -n 's/^[[:space:]]*BASE_URL:[[:space:]]*\(https:\/\/[^[:space:]]*\).*/\1/p' "$file" | head -n 1)
+
+  require_safe_token "service" "$DEPLOY_SERVICE" '^[A-Za-z0-9_-]+$'
+  require_safe_token "ssh user" "$DEPLOY_USER" '^[A-Za-z0-9._-]+$'
+  require_safe_token "ssh host" "$DEPLOY_HOST" '^[0-9A-Za-z.-]+$'
+  require_safe_token "volume" "$DEPLOY_VOLUME" '^[A-Za-z0-9_.-]+$'
+  require_safe_token "image" "$DEPLOY_IMAGE" '^[A-Za-z0-9_.\/-]+$'
+  require_safe_token "registry" "$DEPLOY_REGISTRY" '^[A-Za-z0-9.:-]+$'
+  require_safe_token "BASE_URL" "$DEPLOY_BASE_URL" '^https://[A-Za-z0-9.-]+$'
+}
+
+secret_is_set() {
+  local name="$1"
+  local value="${!name-}"
+
+  value=${value%$'\r'}
+  value=${value#"${value%%[![:space:]]*}"}
+  value=${value%"${value##*[![:space:]]}"}
+  [ -n "$value" ]
+}
+
+remember_secret() {
+  local key="$1"
+  local value="$2"
+  local allowed
+
+  case "$key" in
+    ""|*[!A-Za-z0-9_]*)
+      return
+      ;;
+  esac
+  case "$value" in
+    *$'\n'*|*$'\r'*)
+      die "Refusing secret ${key} because its value contains a line break. No container was stopped."
+      ;;
+  esac
+
+  allowed=0
+  for known in $REQUIRED_SECRETS $OPTIONAL_SECRETS; do
+    if [ "$known" = "$key" ]; then
+      allowed=1
+    fi
+  done
+  if [ "$allowed" -ne 1 ]; then
+    return
+  fi
+
+  printf -v "$key" '%s' "$value"
+  export "$key"
+}
+
+load_secrets_file() {
+  local file="$1"
+  local line key value perm owner
+
+  if [ ! -f "$file" ]; then
+    return 1
+  fi
+
+  perm=$(stat -c '%a' "$file" 2>/dev/null || stat -f '%Lp' "$file")
+  owner=$(stat -c '%u' "$file" 2>/dev/null || stat -f '%u' "$file")
+  if [ "$owner" != "$(id -u)" ]; then
+    die "Refusing $file because it is owned by another user"
+  fi
+  if [ $((8#$perm & 63)) -ne 0 ]; then
+    die "Refusing $file because group or other can read it. Run: chmod 600 $file"
+  fi
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      ''|\#*)
+        continue
+        ;;
+    esac
+    line=${line#"export "}
+    key=${line%%=*}
+    value=${line#*=}
+    key=${key%"${key##*[![:space:]]}"}
+    key=${key#"${key%%[![:space:]]*}"}
+    value=${value%$'\r'}
+    remember_secret "$key" "$value"
+  done < "$file"
+}
+
+missing_secret_names() {
+  local name missing=""
+
+  for name in $REQUIRED_SECRETS; do
+    if ! secret_is_set "$name"; then
+      missing="${missing:+$missing }$name"
+    fi
+  done
+  printf '%s' "$missing"
+}
+
+report_secret_status() {
+  local name state
+
+  printf 'Secret check:\n'
+  for name in $REQUIRED_SECRETS $OPTIONAL_SECRETS; do
+    if secret_is_set "$name"; then
+      state="set"
+    elif printf '%s' " $OPTIONAL_SECRETS " | grep -q " $name "; then
+      state="unset, optional"
+    else
+      state="MISSING"
+    fi
+    printf '  %s: %s\n' "$name" "$state"
+  done
+  printf '  SECRET_KEY_BASE: taken from RAILS_MASTER_KEY by .kamal/secrets\n'
+}
+
+validate_required_secrets() {
+  local missing
+
+  missing=$(missing_secret_names)
+  report_secret_status
+  if [ -n "$missing" ]; then
+    die "Missing or empty secrets: ${missing}. No container was stopped."
+  fi
+}
+
+map_container_secret() {
+  local key="$1"
+  local value="$2"
+
+  case "$key" in
+    SECRET_KEY_BASE)
+      remember_secret RAILS_MASTER_KEY "$value"
+      ;;
+    VAPID_PUBLIC_KEY|VAPID_PRIVATE_KEY)
+      remember_secret "$key" "$value"
+      ;;
+    SMTP_USERNAME)
+      remember_secret AWS_SES_SMTP_USERNAME "$value"
+      ;;
+    SMTP_PASSWORD)
+      remember_secret AWS_SES_SMTP_PASSWORD "$value"
+      ;;
+  esac
+}
+
+import_container_env_file() {
+  local source_file="$1"
+  local line key value
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      SECRET_KEY_BASE=*|VAPID_PUBLIC_KEY=*|VAPID_PRIVATE_KEY=*|SMTP_USERNAME=*|SMTP_PASSWORD=*)
+        key=${line%%=*}
+        value=${line#*=}
+        if [ -n "$value" ]; then
+          map_container_secret "$key" "$value"
+        fi
+        ;;
+    esac
+  done < "$source_file"
+}
+
+write_secrets_file() {
+  local file="$1"
+  local name value previous_umask
+
+  previous_umask=$(umask)
+  umask 077
+  : > "$file"
+  chmod 600 "$file"
+  for name in $REQUIRED_SECRETS $OPTIONAL_SECRETS; do
+    if secret_is_set "$name"; then
+      value="${!name}"
+      printf '%s=%s\n' "$name" "$value" >> "$file"
+    fi
+  done
+  chmod 600 "$file"
+  umask "$previous_umask"
+}
+
+ssh_target() {
+  printf '%s@%s' "$DEPLOY_USER" "$DEPLOY_HOST"
+}
+
+ssh_command() {
+  ssh \
+    -o BatchMode=yes \
+    -o ConnectTimeout=15 \
+    -o StrictHostKeyChecking=accept-new \
+    "$(ssh_target)" \
+    "$@"
+}
+
+import_secrets_from_production() {
+  local captured="" line
+
+  if [ -f "$SECRETS_FILE" ]; then
+    printf 'Leaving existing secrets file in place: %s\n' "$SECRETS_FILE"
+    return 0
+  fi
+
+  captured=$(mktemp "${TMPDIR:-/tmp}/fizzy-container-env.XXXXXX")
+  chmod 600 "$captured"
+  if ! ssh_command "bash -s" > "$captured" <<EOF
+set -euo pipefail
+id=\$(docker ps -q --filter label=service=${DEPLOY_SERVICE} --filter label=role=web --filter status=running | head -n 1)
+test -n "\$id"
+docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "\$id" | while IFS= read -r line; do
+  case "\$line" in
+    SECRET_KEY_BASE=*|VAPID_PUBLIC_KEY=*|VAPID_PRIVATE_KEY=*|SMTP_USERNAME=*|SMTP_PASSWORD=*)
+      printf '%s\n' "\$line"
+      ;;
+  esac
+done
+EOF
+  then
+    rm -f "$captured"
+    die "Could not read application secrets from the running container. No file was written."
+  fi
+
+  import_container_env_file "$captured"
+  rm -f "$captured"
+
+  if [ -n "$(missing_secret_names)" ]; then
+    die "The running container did not provide every required secret. No file was written."
+  fi
+
+  write_secrets_file "$SECRETS_FILE"
+  printf 'Wrote %s with mode 0600.\n' "$SECRETS_FILE"
+}
+
+resolve_secrets() {
+  if [ -f "$SECRETS_FILE" ]; then
+    load_secrets_file "$SECRETS_FILE" || die "Could not read $SECRETS_FILE"
+  else
+    printf 'No secrets file at %s. Trying the running container.\n' "$SECRETS_FILE"
+    import_secrets_from_production
+    if [ -f "$SECRETS_FILE" ]; then
+      load_secrets_file "$SECRETS_FILE" || die "Could not read $SECRETS_FILE"
+    fi
+  fi
+
+  unset SECRET_KEY_BASE
+  validate_required_secrets
+}
+
+fetch_target_sha() {
+  git fetch origin main
+  TARGET_SHA=$(git rev-parse origin/main)
+  require_safe_token "origin/main" "$TARGET_SHA" '^[0-9a-f]{40}$'
+  printf 'origin/main: %s\n' "$TARGET_SHA"
+  printf 'current HEAD: %s\n' "$(git rev-parse HEAD)"
+  printf 'Working tree and branch are left unchanged.\n'
+}
+
+run_kamal() {
+  local dir="$1"
+  shift
+  (cd "$dir" && bin/kamal "$@")
+}
+
+check_kamal() {
+  local version
+
+  if [ ! -x "$REPO_ROOT/bin/kamal" ]; then
+    die "bin/kamal is missing"
+  fi
+  if ! version=$(run_kamal "$REPO_ROOT" version); then
+    die "bin/kamal version failed. Install Ruby $(cat "$REPO_ROOT/.ruby-version") and run bundle install."
+  fi
+  printf 'Kamal: %s\n' "$version"
+  case "$version" in
+    2.*)
+      ;;
+    *)
+      die "bin/kamal version must be 2.x (this host last deployed with 2.12.0)"
+      ;;
+  esac
+  if [ "$version" != "2.12.0" ]; then
+    printf 'Warning: Kamal %s is not 2.12.0. The commands in bin/deploy were checked against 2.12.0.\n' "$version"
+  fi
+}
+
+check_docker() {
+  local platforms
+
+  docker info >/dev/null
+  docker buildx version >/dev/null
+  platforms=$(docker buildx ls 2>/dev/null || true)
+  if ! printf '%s\n' "$platforms" | grep -q 'linux/amd64'; then
+    die "Docker buildx cannot see linux/amd64. config/deploy.yml builds amd64 images."
+  fi
+  printf 'Docker buildx: linux/amd64 available\n'
+}
+
+check_ssh() {
+  ssh_command true
+  printf 'SSH: %s\n' "$(ssh_target)"
+}
+
+check_lock() {
+  local status
+
+  if ! status=$(run_kamal "$REPO_ROOT" lock status); then
+    die "Could not read the Kamal deploy lock. No container was stopped."
+  fi
+  printf '%s\n' "$status"
+  if printf '%s\n' "$status" | grep -q 'Locked by:'; then
+    die "A deploy lock is already held. No container was stopped."
+  fi
+}
+
+prepare_worktree() {
+  WORKTREE=$(mktemp -d "${TMPDIR:-/tmp}/fizzy-deploy.XXXXXX")
+  git worktree add --detach "$WORKTREE" "$TARGET_SHA" >/dev/null
+  mkdir -p "$WORKTREE/.kamal/hooks"
+  cp "$REPO_ROOT/.kamal/hooks/pre-app-boot" "$WORKTREE/.kamal/hooks/pre-app-boot"
+  chmod 700 "$WORKTREE/.kamal/hooks/pre-app-boot"
+}
+
+cleanup() {
+  release_local_lock
+  if [ -n "$WORKTREE" ] && [ -d "$WORKTREE" ]; then
+    git worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
+  fi
+}
+
+local_lock_pid() {
+  if [ -f "$LOCAL_LOCK_DIR/pid" ]; then
+    cat "$LOCAL_LOCK_DIR/pid" 2>/dev/null || true
+  fi
+}
+
+local_lock_held() {
+  local pid
+
+  pid=$(local_lock_pid)
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+acquire_local_lock() {
+  if mkdir "$LOCAL_LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$$" > "$LOCAL_LOCK_DIR/pid"
+    return 0
+  fi
+
+  if local_lock_held; then
+    die "Another bin/deploy is running (pid $(local_lock_pid)). No container was stopped."
+  fi
+
+  rm -rf "$LOCAL_LOCK_DIR"
+  if ! mkdir "$LOCAL_LOCK_DIR" 2>/dev/null; then
+    die "Could not create ${LOCAL_LOCK_DIR}. No container was stopped."
+  fi
+  printf '%s\n' "$$" > "$LOCAL_LOCK_DIR/pid"
+}
+
+release_local_lock() {
+  local pid
+
+  pid=$(local_lock_pid)
+  if [ "$pid" = "$$" ]; then
+    rm -rf "$LOCAL_LOCK_DIR"
+  fi
+}
+
+ensure_no_local_lock() {
+  if local_lock_held; then
+    die "Another bin/deploy is running (pid $(local_lock_pid)). No container was stopped."
+  fi
+}
+
+record_previous_release() {
+  local output
+
+  if ! output=$(run_kamal "$WORKTREE" app version --quiet); then
+    die "Could not read the running app version. No container was stopped."
+  fi
+  PREVIOUS_VERSION=$(printf '%s\n' "$output" | grep -oE '[0-9a-f]{7,40}(_[^[:space:]]+)?' | tail -n 1 || true)
+  if [ -z "$PREVIOUS_VERSION" ]; then
+    PREVIOUS_VERSION="none"
+  fi
+  mkdir -p "$(dirname "$HISTORY_FILE")"
+  printf '%s previous=%s target=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PREVIOUS_VERSION" "$TARGET_SHA" >> "$HISTORY_FILE"
+  chmod 600 "$HISTORY_FILE"
+  printf 'Previous release: %s\n' "$PREVIOUS_VERSION"
+}
+
+remote_bash() {
+  ssh_command "bash -s"
+}
+
+backup_databases() {
+  BACKUP_STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+  require_safe_token "backup stamp" "$BACKUP_STAMP" '^[0-9]{8}T[0-9]{6}Z$'
+  printf 'Backing up SQLite databases to /rails/storage/deploy-backups/%s\n' "$BACKUP_STAMP"
+
+  if ! remote_bash <<EOF
+set -eu
+id=\$(docker ps -q --filter label=service=${DEPLOY_SERVICE} --filter label=role=web --filter status=running | head -n 1)
+test -n "\$id"
+docker exec "\$id" mkdir -p /rails/storage/deploy-backups/${BACKUP_STAMP}
+found=0
+for db in production production_cable production_cache production_queue; do
+  if docker exec "\$id" test -f "/rails/storage/\${db}.sqlite3"; then
+    docker exec "\$id" sqlite3 "/rails/storage/\${db}.sqlite3" ".backup /rails/storage/deploy-backups/${BACKUP_STAMP}/\${db}.sqlite3"
+    docker exec "\$id" test -s "/rails/storage/deploy-backups/${BACKUP_STAMP}/\${db}.sqlite3"
+    found=1
+  fi
+done
+test "\$found" = 1
+docker exec "\$id" test -s /rails/storage/deploy-backups/${BACKUP_STAMP}/production.sqlite3
+EOF
+  then
+    return 1
+  fi
+
+  printf '%s previous=%s target=%s backup=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PREVIOUS_VERSION" "$TARGET_SHA" "$BACKUP_STAMP" >> "$HISTORY_FILE"
+}
+
+boot_new_release() {
+  rm -f "$CUTOVER_MARK"
+  export FIZZY_DEPLOY_HOST="$DEPLOY_HOST"
+  export FIZZY_DEPLOY_USER="$DEPLOY_USER"
+  export FIZZY_SERVICE="$DEPLOY_SERVICE"
+  export FIZZY_CUTOVER_MARK="$CUTOVER_MARK"
+
+  printf 'Booting %s. The old container is stopped only inside the locked boot.\n' "$TARGET_SHA"
+  run_kamal "$WORKTREE" app boot --version "$TARGET_SHA"
+}
+
+container_facts() {
+  remote_bash <<EOF
+set -eu
+id=\$(docker ps -aq --filter label=service=${DEPLOY_SERVICE} --filter label=role=web --filter status=running --filter status=restarting | head -n 1)
+test -n "\$id"
+docker inspect -f '{{.RestartCount}} {{.State.Status}} {{.Config.Image}}' "\$id"
+docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "\$id" | awk -F= '\$1=="KAMAL_VERSION" {print \$2}'
+EOF
+}
+
+startup_log_tokens() {
+  remote_bash <<EOF
+set -euo pipefail
+id=\$(docker ps -aq --filter label=service=${DEPLOY_SERVICE} --filter label=role=web --filter status=running --filter status=restarting | head -n 1)
+test -n "\$id"
+docker logs --tail 400 "\$id" 2>&1 | awk '
+  /Started Supervisor/ { supervisor = 1 }
+  /Started Worker/ { worker = 1 }
+  /Started Scheduler/ { scheduler = 1 }
+  /Listening on/ { listening = 1 }
+  /secret_key_base/ { secret = 1 }
+  /rails aborted/ { aborted = 1 }
+  END {
+    printf "supervisor=%d worker=%d scheduler=%d listening=%d secret_key_base=%d aborted=%d\n", supervisor+0, worker+0, scheduler+0, listening+0, secret+0, aborted+0
+  }
+'
+EOF
+}
+
+http_check() {
+  local path="$1"
+  local follow="$2"
+  local output code url ssl
+
+  if [ "$follow" = "yes" ]; then
+    output=$(curl --silent --show-error --max-time 30 --location --user-agent "$PUBLIC_CURL_AGENT" \
+      --write-out '%{http_code} %{url_effective} %{ssl_verify_result}' \
+      --output /dev/null \
+      "${DEPLOY_BASE_URL}${path}")
+  else
+    output=$(curl --silent --show-error --max-time 30 --user-agent "$PUBLIC_CURL_AGENT" \
+      --write-out '%{http_code} %{url_effective} %{ssl_verify_result}' \
+      --output /dev/null \
+      "${DEPLOY_BASE_URL}${path}")
+  fi
+  printf '%s\n' "$output"
+  code=${output%% *}
+  ssl=${output##* }
+  url=${output#* }
+  url=${url% *}
+  [ "$code" = "200" ] || return 1
+  [ "$ssl" = "0" ] || return 1
+  if [ "$follow" = "yes" ]; then
+    printf '%s' "$url" | grep -q '/session/new' || return 1
+  fi
+}
+
+verify_release() {
+  local facts version image restarts status tokens attempt
+
+  printf 'Waiting for Rails to stay up after Kamal reports the container running.\n'
+  facts=""
+  version=""
+  image=""
+  restarts=""
+  status=""
+  attempt=0
+  while [ "$attempt" -lt 6 ]; do
+    facts=$(container_facts) || facts=""
+    restarts=$(printf '%s\n' "$facts" | awk 'NR==1 {print $1}')
+    status=$(printf '%s\n' "$facts" | awk 'NR==1 {print $2}')
+    image=$(printf '%s\n' "$facts" | awk 'NR==1 {print $3}')
+    version=$(printf '%s\n' "$facts" | awk 'NR==2 {print $1}')
+    if [ "$status" = "running" ] && [ "$restarts" = "0" ] && [ "$version" = "$TARGET_SHA" ] && printf '%s' "$image" | grep -q "$TARGET_SHA"; then
+      break
+    fi
+    attempt=$((attempt + 1))
+    sleep 5
+  done
+
+  if [ "$status" != "running" ] || [ "$restarts" != "0" ] || [ "$version" != "$TARGET_SHA" ]; then
+    printf 'Release check failed: status=%s restarts=%s version=%s image=%s\n' "$status" "$restarts" "$version" "$image" >&2
+    return 1
+  fi
+
+  tokens=""
+  attempt=0
+  while [ "$attempt" -lt 12 ]; do
+    facts=$(container_facts) || return 1
+    restarts=$(printf '%s\n' "$facts" | awk 'NR==1 {print $1}')
+    status=$(printf '%s\n' "$facts" | awk 'NR==1 {print $2}')
+    version=$(printf '%s\n' "$facts" | awk 'NR==2 {print $1}')
+    if [ "$status" != "running" ] || [ "$restarts" != "0" ] || [ "$version" != "$TARGET_SHA" ]; then
+      printf 'Container changed during startup: status=%s restarts=%s version=%s\n' "$status" "$restarts" "$version" >&2
+      return 1
+    fi
+
+    tokens=$(startup_log_tokens) || return 1
+    printf 'Startup log tokens: %s\n' "$tokens"
+    if printf '%s\n' "$tokens" | grep -q 'secret_key_base=1' || printf '%s\n' "$tokens" | grep -q 'aborted=1'; then
+      printf 'Rails failed during startup.\n' >&2
+      return 1
+    fi
+    if printf '%s\n' "$tokens" | grep -q 'supervisor=1' \
+      && printf '%s\n' "$tokens" | grep -q 'worker=1' \
+      && printf '%s\n' "$tokens" | grep -q 'scheduler=1' \
+      && printf '%s\n' "$tokens" | grep -q 'listening=1' \
+      && http_check /up no >/dev/null \
+      && http_check / yes >/dev/null; then
+      printf 'Verified %s: image and KAMAL_VERSION match, container stayed up, Solid Queue started, and /up and the login page returned HTTP 200 over valid TLS.\n' "$TARGET_SHA"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 5
+  done
+
+  printf 'Rails did not report a healthy startup in time.\n' >&2
+  return 1
+}
+
+stop_web_containers() {
+  remote_bash <<EOF
+set -eu
+ids=\$(docker ps -aq --filter label=service=${DEPLOY_SERVICE} --filter label=role=web --filter status=running --filter status=restarting)
+if [ -n "\$ids" ]; then
+  docker stop -t 30 \$ids
+fi
+EOF
+}
+
+restore_databases() {
+  local image_ref="${DEPLOY_REGISTRY}/${DEPLOY_IMAGE}:${TARGET_SHA}"
+
+  printf 'Restoring SQLite backup %s before any previous release boots.\n' "$BACKUP_STAMP"
+  remote_bash <<EOF
+set -eu
+docker run --rm --network none --entrypoint bash \
+  -v ${DEPLOY_VOLUME}:/rails/storage \
+  ${image_ref} \
+  -c 'set -eu
+dir=/rails/storage/deploy-backups/${BACKUP_STAMP}
+test -s "\$dir/production.sqlite3"
+for db in production production_cable production_cache production_queue; do
+  src="\$dir/\${db}.sqlite3"
+  if [ -f "\$src" ]; then
+    rm -f "/rails/storage/\${db}.sqlite3" "/rails/storage/\${db}.sqlite3-wal" "/rails/storage/\${db}.sqlite3-shm"
+    cp "\$src" "/rails/storage/\${db}.sqlite3"
+    test -s "/rails/storage/\${db}.sqlite3"
+  fi
+done'
+EOF
+}
+
+recover_previous_release() {
+  printf 'New release failed. Restoring the previous release %s.\n' "$PREVIOUS_VERSION" >&2
+  stop_web_containers || {
+    printf 'Recovery failed: the new container could not be stopped.\n' >&2
+    return 1
+  }
+
+  if [ -z "$BACKUP_STAMP" ]; then
+    printf 'Recovery failed: there is no database backup stamp, so the previous release was not booted.\n' >&2
+    return 1
+  fi
+
+  restore_databases || {
+    printf 'Recovery failed: database restore failed. The previous release was not booted.\n' >&2
+    printf 'Backup remains at /rails/storage/deploy-backups/%s on volume %s.\n' "$BACKUP_STAMP" "$DEPLOY_VOLUME" >&2
+    return 1
+  }
+
+  if [ "$PREVIOUS_VERSION" = "none" ]; then
+    printf 'Recovery failed: database restored, but there is no previous release to boot.\n' >&2
+    return 1
+  fi
+
+  rm -f "$CUTOVER_MARK"
+  if ! run_kamal "$WORKTREE" app boot --version "$PREVIOUS_VERSION"; then
+    printf 'Recovery failed: Kamal could not boot %s.\n' "$PREVIOUS_VERSION" >&2
+    printf 'The database backup is /rails/storage/deploy-backups/%s.\n' "$BACKUP_STAMP" >&2
+    return 1
+  fi
+
+  printf 'Previous release %s was booted after restoring the database backup.\n' "$PREVIOUS_VERSION"
+}
+
+deploy() {
+  local porcelain
+
+  porcelain=$(git status --porcelain)
+  resolve_secrets
+  fetch_target_sha
+  check_kamal
+  check_docker
+  check_ssh
+  check_lock
+  if [ -n "$porcelain" ]; then
+    printf 'Uncommitted files were present and were not stashed, committed, or deployed.\n'
+  fi
+
+  prepare_worktree
+  record_previous_release
+  printf 'Building and pulling %s while %s keeps serving.\n' "$TARGET_SHA" "$PREVIOUS_VERSION"
+  run_kamal "$WORKTREE" build deliver --version "$TARGET_SHA"
+  if ! backup_databases; then
+    die "SQLite backup failed. No container was stopped."
+  fi
+  if ! boot_new_release; then
+    if [ -f "$CUTOVER_MARK" ]; then
+      recover_previous_release || die "Automatic recovery failed. See the messages above. History: $HISTORY_FILE"
+      die "Deployed revision failed and the previous release was restored."
+    fi
+    die "Boot failed before the old container stopped. It should still be serving."
+  fi
+
+  if ! verify_release; then
+    recover_previous_release || die "Automatic recovery failed. See the messages above. History: $HISTORY_FILE"
+    die "Health checks failed and the previous release was restored."
+  fi
+
+  rm -f "$CUTOVER_MARK"
+  printf 'Deployed %s. Downtime was limited to the port cutover and boot, not a zero-downtime switch.\n' "$TARGET_SHA"
+}
+
+preflight() {
+  ensure_no_local_lock
+  resolve_secrets
+  fetch_target_sha
+  check_kamal
+  check_docker
+  check_ssh
+  check_lock
+  printf 'Preflight passed. The next deploy would build %s, back up SQLite, then stop the old container under the Kamal boot lock.\n' "$TARGET_SHA"
+  printf 'Expected downtime: from that stop until startup checks pass. This is not zero-downtime.\n'
+}
+
+main() {
+  local mode="deploy"
+
+  case "${1:-}" in
+    "")
+      mode="deploy"
+      ;;
+    --preflight)
+      mode="preflight"
+      ;;
+    --import-secrets)
+      mode="import"
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      die "Unknown argument: $1"
+      ;;
+  esac
+
+  if [ "$#" -gt 1 ]; then
+    usage >&2
+    die "Too many arguments"
+  fi
+
+  parse_deploy_config
+  activate_toolchain
+  trap cleanup EXIT
+
+  case "$mode" in
+    preflight)
+      preflight
+      ;;
+    import)
+      acquire_local_lock
+      import_secrets_from_production
+      if [ -f "$SECRETS_FILE" ]; then
+        load_secrets_file "$SECRETS_FILE" || die "Could not read $SECRETS_FILE"
+      fi
+      validate_required_secrets
+      ;;
+    deploy)
+      acquire_local_lock
+      deploy
+      ;;
+  esac
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  main "$@"
+fi
