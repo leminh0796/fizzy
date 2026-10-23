@@ -143,12 +143,26 @@ If you're using a provider other than AWS, you will also need some of the follow
 - `S3_REQUEST_CHECKSUM_CALCULATION`
 - `S3_RESPONSE_CHECKSUM_VALIDATION`
 
+If your storage provider is on a different site than your Fizzy instance and doesn't return CORS headers on presigned URL responses, inline images may fail to load.
+In that case, set `SERVICE_WORKER_CORS_ENABLED=false` so the service worker fetches uploaded files without CORS mode.
+
 #### Multi-tenant mode
 
 By default, when you run the Fizzy Docker image you'll be limited to creating a single account (although that account can have as many users as you like).
 This is for convenience: typically when you self-host you'll be running a single account, so in this mode new account signups are automatically disabled as soon as you've created your first account.
 
 If you do want to allow multiple accounts to be created in your instance, set `MULTI_TENANT=true`
+
+## Importing an existing Fizzy account
+
+You can move an account between Fizzy instances by exporting it on the old instance and uploading the export zip to the new one during signup.
+
+Imports need free space: at least twice the export file's size, beyond the export itself, since the imported attachments roughly mirror the zip's contents. If there isn't enough, the import fails before it starts and your logs record `import needs ~90 GB free, found 12 GB`. The person importing only sees a generic failure, so check the logs when an import fails for no apparent reason: free up space (or grow the volume) and have them try again. If free space can't be determined, the check is skipped and the import proceeds.
+
+For very large exports:
+
+- Browser uploads pass through Thruster, which drops slow uploads after its read timeout (a 502 before the import ever starts). Raise `THRUSTER_HTTP_READ_TIMEOUT` (seconds) and recreate the container so the setting takes effect.
+- `script/import-account` runs the import directly on the server from a zip already on disk, bypassing the browser upload entirely — handy for multi-gigabyte exports.
 
 ## Example
 

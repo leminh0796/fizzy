@@ -2,7 +2,11 @@
 
 <% content_for :header do %>
   <div class="header__actions header__actions--start">
-    <%= back_link_to "My profile", user_path(Current.user), "keydown.left@document->hotkey#click keydown.esc@document->hotkey#click" %>
+    <% if Current.user %>
+      <%= back_link_to "My profile", user_path(Current.user), "keydown.left@document->hotkey#click keydown.esc@document->hotkey#click" %>
+    <% else %>
+      <%= back_link_to "Menu", session_menu_path, "keydown.left@document->hotkey#click keydown.esc@document->hotkey#click" %>
+    <% end %>
   </div>
 
   <h1 class="header__title" data-bridge--title-target="header"><%= @page_title %></h1>
@@ -11,7 +15,7 @@
 <section class="panel panel--wide shadow center webhooks">
   <% if @access_tokens.any? %>
     <p class="margin-none-block-start">Tokens you have generated that can be used to access the Fizzy API.</p>
-    <table class="access_tokens_table margin-block-end-double max-width txt-small">
+    <table class="access-tokens margin-block-end-double max-width txt-small">
       <thead>
         <tr>
           <th>Description</th>

@@ -45,6 +45,45 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     assert_not delivery.succeeded?, "the response can't have an error"
   end
 
+  test "sanitized_request strips signature header" do
+    delivery = webhook_deliveries(:successfully_completed)
+    delivery.update!(request: {
+      headers: {
+        "User-Agent" => "fizzy/1.0.0 Webhook",
+        "Content-Type" => "application/json",
+        "X-Webhook-Signature" => "super-secret-signature",
+        "X-Webhook-Timestamp" => "2025-12-05T19:36:35.401Z"
+      }
+    })
+
+    result = delivery.sanitized_request
+    assert_equal %w[ User-Agent Content-Type X-Webhook-Timestamp ], result[:headers].keys
+    assert_not result[:headers].key?("X-Webhook-Signature")
+  end
+
+  test "sanitized_request returns nil when request is blank" do
+    delivery = webhook_deliveries(:pending)
+    delivery.update_columns(request: nil)
+
+    assert_nil delivery.sanitized_request
+  end
+
+  test "response_summary returns code and error" do
+    delivery = webhook_deliveries(:successfully_completed)
+    delivery.update!(response: { code: 200, error: nil })
+
+    result = delivery.response_summary
+    assert_equal 200, result[:code]
+    assert_nil result[:error]
+  end
+
+  test "response_summary returns nil when response is blank" do
+    delivery = webhook_deliveries(:pending)
+    delivery.update_columns(response: nil)
+
+    assert_nil delivery.response_summary
+  end
+
   test "deliver_later" do
     delivery = webhook_deliveries(:pending)
 
@@ -74,6 +113,21 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     assert_equal 200, delivery.response[:code]
     assert delivery.response[:error].blank?
     assert delivery.succeeded?
+  end
+
+  test "deliver a comment whose body has a content attachment" do
+    comment = comments(:layout_overflowing_david)
+    comment.update! body: %(<action-text-attachment content-type="text/html" content="&lt;p&gt;Embedded content&lt;/p&gt;"></action-text-attachment>)
+    delivery = Webhook::Delivery.create!(webhook: webhooks(:active), event: events(:layout_commented))
+
+    request_stub = stub_request(:post, delivery.webhook.url)
+      .with { |request| JSON.parse(request.body).dig("eventable", "body", "html").include?("Embedded content") }
+      .to_return(status: 200, headers: { "content-type" => "application/json" })
+
+    delivery.deliver
+
+    assert_requested request_stub
+    assert_equal "completed", delivery.state
   end
 
   test "deliver when the network timeouts" do
@@ -132,8 +186,8 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
 
     request_stub = stub_request(:post, webhook.url)
       .with do |request|
-        body = CGI.parse(request.body)
-        body.key?("content") && body["content"].first.present? &&
+        body = URI.decode_www_form(request.body).to_h
+        body.key?("content") && body["content"].present? &&
         request.headers["Content-Type"] == "application/x-www-form-urlencoded"
       end
       .to_return(status: 200)
@@ -237,7 +291,7 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     Current.session = sessions(:david)
 
     request_stub = stub_request(:post, webhook.url)
-      .with { |request| CGI.parse(request.body)["content"].first.include?("David added") }
+      .with { |request| URI.decode_www_form(request.body).to_h["content"].include?("David added") }
       .to_return(status: 200)
 
     delivery.deliver
@@ -262,7 +316,7 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
 
     delivery.deliver
 
-    content = CGI.parse(captured_body)["content"].first
+    content = URI.decode_www_form(captured_body).to_h["content"]
 
     expected = <<~HTML.strip
       David added &quot;Tom &amp; Jerry&#39;s &lt;Great&gt; &quot;Adventure&quot;&quot;
@@ -353,7 +407,7 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     Current.session = sessions(:kevin)
 
     request_stub = stub_request(:post, webhook.url)
-      .with { |request| CGI.parse(request.body)["content"].first.include?("David added") }
+      .with { |request| URI.decode_www_form(request.body).to_h["content"].include?("David added") }
       .to_return(status: 200)
 
     delivery.deliver
@@ -380,6 +434,26 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     assert_not delivery.succeeded?
   end
 
+  test "reports a DNS resolution failure as a lookup failure, not a blocked address" do
+    webhook = Webhook.create!(
+      board: boards(:writebook),
+      name: "Unresolvable",
+      url: "https://nxdomain.example.invalid/webhook"
+    )
+    event = events(:layout_commented)
+    delivery = Webhook::Delivery.create!(webhook: webhook, event: event)
+
+    # Host resolves to nothing (timeout/NXDOMAIN), distinct from resolving to a
+    # blocked address, which stays private_uri (see the rebinding test above).
+    stub_dns_failure
+
+    delivery.deliver
+
+    assert_equal "completed", delivery.state
+    assert_equal "dns_lookup_failed", delivery.response[:error]
+    assert_not delivery.succeeded?
+  end
+
   test "connects to the pinned IP address preventing DNS re-resolution" do
     webhook = Webhook.create!(
       board: boards(:writebook),
@@ -402,11 +476,34 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     http_mock.stubs(:read_timeout=)
     http_mock.stubs(:request).yields(response_mock).returns(response_mock)
 
-    Net::HTTP.expects(:new).with("example.com", 443).returns(http_mock)
+    Net::HTTP.expects(:new).with("example.com", 443, nil).returns(http_mock)
 
     delivery.deliver
 
     assert delivery.succeeded?
+  end
+
+  test "connects to the pinned IP address even when a proxy is configured" do
+    webhook = Webhook.create!(
+      board: boards(:writebook),
+      name: "Proxied",
+      url: "http://example.com/webhook"
+    )
+    delivery = Webhook::Delivery.create!(webhook: webhook, event: events(:layout_commented))
+
+    saved = ENV.slice("http_proxy", "HTTP_PROXY", "no_proxy", "NO_PROXY")
+    %w[ no_proxy NO_PROXY ].each { |key| ENV.delete(key) }
+    %w[ http_proxy HTTP_PROXY ].each { |key| ENV[key] = "http://proxy.internal:3128" }
+
+    TCPSocket.expects(:open).with { |*args, **| args.first == "proxy.internal" }.never
+    TCPSocket.expects(:open).with { |*args, **| args.first == PUBLIC_TEST_IP && args[1] == 80 }.throws(:not_proxied)
+
+    assert_throws :not_proxied do
+      delivery.deliver
+    end
+  ensure
+    %w[ http_proxy HTTP_PROXY no_proxy NO_PROXY ].each { |key| ENV.delete(key) }
+    saved.each { |key, value| ENV[key] = value }
   end
 
   test "handles response too large error" do
@@ -434,11 +531,4 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     assert_equal 200, delivery.response[:code]
     assert delivery.succeeded?
   end
-
-  private
-    def stub_dns_resolution(*ips)
-      dns_mock = mock("dns")
-      dns_mock.stubs(:each_address).multiple_yields(*ips)
-      Resolv::DNS.stubs(:open).yields(dns_mock)
-    end
 end

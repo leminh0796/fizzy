@@ -15,19 +15,23 @@ Rails.application.routes.draw do
       resource :avatar
       resource :role
       resource :events
-
       resources :push_subscriptions
 
-      resources :email_addresses, param: :token do
-        resource :confirmation, module: :email_addresses
+      filter_path_parameters :token, :email_address_token do
+        resources :email_addresses, param: :token do
+          resource :confirmation, module: :email_addresses
+        end
       end
 
       resources :data_exports, only: [ :create, :show ]
     end
   end
 
+  resource :transfer_token, only: :create
+
   resources :boards do
     scope module: :boards do
+      resources :accesses, only: :index
       resource :subscriptions
       resource :involvement
       resource :publication
@@ -39,7 +43,11 @@ Rails.application.routes.draw do
         resource :closed
       end
 
-      resources :columns
+      resources :columns do
+        scope module: :columns do
+          resources :cards, only: :index
+        end
+      end
     end
 
     resources :cards, only: :create
@@ -47,6 +55,7 @@ Rails.application.routes.draw do
     resources :webhooks do
       scope module: :webhooks do
         resource :activation, only: :create
+        resources :deliveries, only: :index, defaults: { format: :json }
       end
     end
   end
@@ -57,7 +66,7 @@ Rails.application.routes.draw do
   end
 
   namespace :columns do
-    resources :cards do
+    resources :cards, only: [] do
       scope module: :cards do
         namespace :drops do
           resource :not_now
@@ -121,9 +130,6 @@ Rails.application.routes.draw do
   end
 
   resource :search
-  namespace :searches do
-    resources :queries
-  end
 
   resources :filters do
     scope module: :filters do
@@ -133,6 +139,7 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :activities, only: :index
   resources :events, only: :index
   namespace :events do
     resources :days
@@ -141,10 +148,14 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :qr_codes
+  filter_path_parameters :id do
+    resources :qr_codes
+  end
 
-  get "join/:code", to: "join_codes#new", as: :join
-  post "join/:code", to: "join_codes#create"
+  filter_path_parameters :code do
+    get "join/:code", to: "join_codes#new", as: :join
+    post "join/:code", to: "join_codes#create"
+  end
 
   namespace :users do
     resources :joins
@@ -153,9 +164,12 @@ Rails.application.routes.draw do
 
   resource :session do
     scope module: :sessions do
-      resources :transfers
+      filter_path_parameters :id do
+        resources :transfers
+      end
       resource :magic_link
       resource :menu
+      resource :passkey, only: :create
     end
   end
 
@@ -172,8 +186,13 @@ Rails.application.routes.draw do
   resource :landing
 
   namespace :my do
+    resource :passkey_challenge, only: :create
     resource :identity, only: :show
-    resources :access_tokens
+    # show is reached by a signed id that reveals the new token for a few seconds
+    filter_path_parameters :id do
+      resources :access_tokens
+    end
+    resources :passkeys, except: %i[ show new ]
     resources :pins
     resource :timezone
     resource :menu
@@ -181,7 +200,6 @@ Rails.application.routes.draw do
 
   namespace :prompts do
     resources :cards
-    resources :tags
     resources :users
 
     resources :boards do
@@ -191,19 +209,22 @@ Rails.application.routes.draw do
     end
   end
 
-  namespace :public do
-    resources :boards do
-      scope module: :boards do
-        namespace :columns do
-          resource :not_now, only: :show
-          resource :stream, only: :show
-          resource :closed, only: :show
+  # A public board is found by its publication key, in :id or :board_id.
+  filter_path_parameters :id, :board_id do
+    namespace :public do
+      resources :boards do
+        scope module: :boards do
+          namespace :columns do
+            resource :not_now, only: :show
+            resource :stream, only: :show
+            resource :closed, only: :show
+          end
+
+          resources :columns, only: :show
         end
 
-        resources :columns, only: :show
+        resources :cards, only: :show
       end
-
-      resources :cards, only: :show
     end
   end
 
@@ -239,11 +260,18 @@ Rails.application.routes.draw do
   # Support for legacy URLs
   get "/collections/:collection_id/cards/:id", to: redirect { |params, request| "#{request.script_name}/cards/#{params[:id]}" }
   get "/collections/:id", to: redirect { |params, request| "#{request.script_name}/boards/#{params[:id]}" }
-  get "/public/collections/:id", to: redirect { |params, request| "#{request.script_name}/public/boards/#{params[:id]}" }
+  filter_path_parameters :id do
+    get "/public/collections/:id", to: redirect { |params, request| "#{request.script_name}/public/boards/#{params[:id]}" }
+  end
 
   get "up", to: "rails/health#show", as: :rails_health_check
   get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   get "service-worker" => "pwa#service_worker"
+
+  # Trusted Types report-only pilot (config/initializers/content_security_policy.rb).
+  # Only the CSP report type browsers send: a body Rails parses into params
+  # would be logged before the controller could drop its content sample.
+  resources :trusted_types_reports, only: :create, constraints: ->(request) { request.media_type == "application/csp-report" }
 
   # Mobile clients
   get "client_configurations/(:platform)_v(:version)" => "client_configurations#show",

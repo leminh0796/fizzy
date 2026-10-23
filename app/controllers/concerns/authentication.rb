@@ -57,12 +57,20 @@ module Authentication
 
     def authenticate_by_bearer_token
       if request.authorization.to_s.include?("Bearer")
-        authenticate_or_request_with_http_token do |token|
-          if identity = Identity.find_by_permissable_access_token(token, method: request.method)
-            Current.identity = identity
+        if bearer_token_authenticatable_request?
+          authenticate_or_request_with_http_token do |token|
+            if identity = Identity.find_by_permissable_access_token(token, method: request.method)
+              Current.identity = identity
+            end
           end
+        else
+          request_http_token_authentication
         end
       end
+    end
+
+    def bearer_token_authenticatable_request?
+      request.format.json?
     end
 
     def request_authentication
@@ -98,6 +106,7 @@ module Authentication
 
     def terminate_session
       Current.session.destroy
+      Current.identity&.close_remote_connections(reconnect: true)
       cookies.delete(:session_token)
     end
 

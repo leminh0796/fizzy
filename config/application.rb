@@ -1,6 +1,7 @@
 require_relative "boot"
 require "rails/all"
 require_relative "../lib/fizzy"
+require_relative "../lib/action_pack/railtie"
 
 Bundler.require(*Rails.groups)
 
@@ -8,6 +9,19 @@ module Fizzy
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
+
+    # Set here rather than in an initializer: Active Record copies these into filter_attributes when it
+    # loads, and config/initializers/extensions.rb loads it before later initializers run.
+    #
+    # `code` covers the sign-in code a magic link is redeemed with, and a join code's route parameter. A
+    # webhook's `url` can be a credential itself (a chat service's incoming webhook URL); it is matched
+    # whole, so a parameter that merely ends in "url" keeps its value. The pattern also matches a nested
+    # key's dotted path ("webhook.url"), which is what it is tested against once any dotted filter, such as
+    # those `encrypts` adds, is present.
+    config.filter_parameters += [
+      *%i[ passw secret token _key crypt salt certificate otp ssn code ],
+      /(?:\A|\.)url\z/
+    ]
 
     # Include the `lib` directory in autoload paths. Use the `ignore:` option
     # to list subdirectories that don't contain `.rb` files or that shouldn't
@@ -24,6 +38,9 @@ module Fizzy
     config.generators do |g|
       g.orm :active_record, primary_key_type: :uuid
     end
+
+    config.action_pack.passkey.draw_routes = false
+    config.action_pack.passkey.challenge_url = -> { my_passkey_challenge_path(script_name: "") }
 
     config.mission_control.jobs.http_basic_auth_enabled = false
   end

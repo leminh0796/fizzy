@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_02_18_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_08_28_120000) do
   create_table "accesses", id: :uuid, charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.datetime "accessed_at"
     t.uuid "account_id", null: false
@@ -67,6 +67,22 @@ ActiveRecord::Schema[8.2].define(version: 2026_02_18_120000) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["external_account_id"], name: "index_accounts_on_external_account_id", unique: true
+  end
+
+  create_table "action_pack_passkeys", id: :uuid, charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.string "aaguid"
+    t.boolean "backed_up"
+    t.datetime "created_at", null: false
+    t.string "credential_id", null: false
+    t.uuid "holder_id", null: false
+    t.string "holder_type", null: false
+    t.string "name"
+    t.binary "public_key", null: false
+    t.bigint "sign_count", default: 0, null: false
+    t.text "transports"
+    t.datetime "updated_at", null: false
+    t.index ["credential_id"], name: "index_action_pack_passkeys_on_credential_id", unique: true
+    t.index ["holder_type", "holder_id"], name: "index_action_pack_passkeys_on_holder_type_and_holder_id"
   end
 
   create_table "action_text_rich_texts", id: :uuid, charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -211,6 +227,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_02_18_120000) do
     t.string "status", default: "drafted", null: false
     t.string "title"
     t.datetime "updated_at", null: false
+    t.index ["account_id", "board_id", "status"], name: "index_cards_on_account_id_and_board_id_and_status"
     t.index ["account_id", "last_active_at", "status"], name: "index_cards_on_account_id_and_last_active_at_and_status"
     t.index ["account_id", "number"], name: "index_cards_on_account_id_and_number", unique: true
     t.index ["board_id"], name: "index_cards_on_board_id"
@@ -342,6 +359,15 @@ ActiveRecord::Schema[8.2].define(version: 2026_02_18_120000) do
     t.string "token"
     t.datetime "updated_at", null: false
     t.index ["identity_id"], name: "index_access_token_on_identity_id"
+  end
+
+  create_table "identity_transfers", id: :uuid, charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "identity_id", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["identity_id"], name: "index_identity_transfers_on_identity_id"
+    t.index ["token"], name: "index_identity_transfers_on_token", unique: true
   end
 
   create_table "magic_links", id: :uuid, charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|

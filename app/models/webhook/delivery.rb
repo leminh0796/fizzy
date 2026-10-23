@@ -44,6 +44,18 @@ class Webhook::Delivery < ApplicationRecord
     raise
   end
 
+  def sanitized_request
+    if headers = request&.dig("headers")&.except("X-Webhook-Signature")
+      { headers: headers }
+    end
+  end
+
+  def response_summary
+    if response.present?
+      { code: response[:code], error: response[:error] }
+    end
+  end
+
   def failed?
     (errored? || completed?) && !succeeded?
   end
@@ -67,7 +79,7 @@ class Webhook::Delivery < ApplicationRecord
       end
     rescue ResponseTooLarge
       { error: :response_too_large }
-    rescue Resolv::ResolvTimeout, Resolv::ResolvError, SocketError
+    rescue Surfguard::Unresolvable, Resolv::ResolvTimeout, Resolv::ResolvError, SocketError
       { error: :dns_lookup_failed }
     rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ETIMEDOUT
       { error: :connection_timeout }
@@ -87,15 +99,17 @@ class Webhook::Delivery < ApplicationRecord
 
     def resolved_ip
       return @resolved_ip if defined?(@resolved_ip)
-      @resolved_ip = SsrfProtection.resolve_public_ip(uri.host)
+      @resolved_ip = Surfguard.resolve_public_ips(uri.host).first
     end
 
     def uri
       @uri ||= URI(webhook.url)
     end
 
+    # The nil proxy address ignores http_proxy: a proxy would look the host up again, and the connection
+    # would no longer go to resolved_ip.
     def http
-      Net::HTTP.new(uri.host, uri.port).tap do |http|
+      Net::HTTP.new(uri.host, uri.port, nil).tap do |http|
         http.ipaddr = resolved_ip
         http.use_ssl = (uri.scheme == "https")
         http.open_timeout = ENDPOINT_TIMEOUT

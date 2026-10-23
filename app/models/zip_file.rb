@@ -1,6 +1,13 @@
 class ZipFile
   class InvalidFileError < StandardError; end
 
+  # Both inherit from InvalidFileError so an archive that busts a limit is
+  # handled everywhere a bad export already is: the import stops with an
+  # "invalid export" reason, and the job discards it rather than resuming
+  # against the same entry.
+  class EntryTooLargeError < InvalidFileError; end
+  class ArchiveTooLargeError < InvalidFileError; end
+
   class << self
     def create_for(attachment, filename:)
       raise ArgumentError, "No block given" unless block_given?
@@ -24,6 +31,10 @@ class ZipFile
       else
         read_from_disk(blob) { |zip| yield zip }
       end
+    end
+
+    def path_on_disk(blob)
+      blob.service.path_for(blob.key) if blob.service.respond_to?(:path_for)
     end
 
     private
@@ -84,15 +95,23 @@ class ZipFile
 
       def read_from_s3(blob)
         url = blob.url(expires_in: 6.hour)
-        remote_io = RemoteIO.new(url)
+        ssl_verify_peer = blob.service.client.client.config.ssl_verify_peer
+        remote_io = RemoteIO.new(url, ssl_verify_peer: ssl_verify_peer)
         reader = Reader.new(remote_io)
         yield reader
       end
 
       def read_from_disk(blob)
-        blob.open do |file|
-          reader = Reader.new(file)
-          yield reader
+        if path = path_on_disk(blob)
+          File.open(path, "rb") do |file|
+            reader = Reader.new(file)
+            yield reader
+          end
+        else
+          blob.open do |file|
+            reader = Reader.new(file)
+            yield reader
+          end
         end
       end
   end
