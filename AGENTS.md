@@ -13,6 +13,7 @@ diff before calling it done.
 Default branch: `main`
 
 Self-hosted deploys run Kamal against `config/deploy.yml` — see `docs/kamal-deployment.md`.
+This installation's repeatable production command is `bin/deploy`, documented in `docs/production-deploy.md`.
 
 ## SaaS mode
 

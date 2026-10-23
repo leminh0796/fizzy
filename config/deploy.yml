@@ -13,6 +13,9 @@ servers:
     proxy: false  # Disable kamal-proxy since we're using Nginx
     options:
       publish:
+        # Fixed host port. bin/deploy stops the current container before boot.
+        # bin/kamal deploy starts the new container first, and Docker rejects it
+        # with "port is already allocated".
         - "127.0.0.1:3006:80"  # Map host port 3006 to container port 80
 
 # How you connect to your server

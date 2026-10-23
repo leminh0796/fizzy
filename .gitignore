@@ -39,5 +39,11 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
+# Production deploy secrets and local release notes. Never commit these.
+/.kamal/production.env
+/.kamal/release-history
+/.kamal/cutover-started
+/.kamal/deploy.lock
+
 /config/credentials/*.key
 .DS_Store

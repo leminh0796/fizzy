@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Runs locally while `kamal app boot` holds the deploy lock, before the new
+# container is created. The published port 127.0.0.1:3006 cannot be shared, so
+# the current web container is stopped here. Volumes are not removed.
+
+set -euo pipefail
+set +o xtrace
+unset RAILS_MASTER_KEY SECRET_KEY_BASE VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY \
+  AWS_SES_SMTP_USERNAME AWS_SES_SMTP_PASSWORD SMTP_USERNAME SMTP_PASSWORD \
+  KAMAL_REGISTRY_PASSWORD
+
+host=${FIZZY_DEPLOY_HOST:-}
+user=${FIZZY_DEPLOY_USER:-}
+service=${FIZZY_SERVICE:-fizzy}
+mark=${FIZZY_CUTOVER_MARK:-}
+
+if ! printf '%s' "$host" | grep -Eq '^[0-9A-Za-z.-]+$'; then
+  printf 'pre-app-boot: missing or unsafe FIZZY_DEPLOY_HOST\n' >&2
+  exit 1
+fi
+if ! printf '%s' "$user" | grep -Eq '^[A-Za-z0-9._-]+$'; then
+  printf 'pre-app-boot: missing or unsafe FIZZY_DEPLOY_USER\n' >&2
+  exit 1
+fi
+if ! printf '%s' "$service" | grep -Eq '^[A-Za-z0-9_-]+$'; then
+  printf 'pre-app-boot: unsafe FIZZY_SERVICE\n' >&2
+  exit 1
+fi
+
+ssh \
+  -o BatchMode=yes \
+  -o ConnectTimeout=15 \
+  -o StrictHostKeyChecking=accept-new \
+  "${user}@${host}" \
+  "bash -s" <<EOF
+set -eu
+ids=\$(docker ps -aq --filter label=service=${service} --filter label=role=web --filter status=running --filter status=restarting)
+if [ -n "\$ids" ]; then
+  docker stop -t 30 \$ids
+fi
+EOF
+
+if [ -n "$mark" ]; then
+  mkdir -p "$(dirname "$mark")"
+  : > "$mark"
+fi
